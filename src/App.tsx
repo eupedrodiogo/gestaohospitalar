@@ -91,44 +91,44 @@ import {
 
 // Subcomponents
 import Header from "./components/Header";
-import LoginScreen from "./components/LoginScreen";
-import BackupPanel from "./components/BackupPanel";
-import FeedbackPanel from "./components/FeedbackPanel";
-import MetricsPanel from "./components/MetricsPanel";
+import LoginScreen from "./pages/LoginScreen";
+import BackupPanel from "./pages/BackupPanel";
+import FeedbackPanel from "./pages/FeedbackPanel";
+import MetricsPanel from "./pages/MetricsPanel";
 import GamificationBadges from "./components/GamificationBadges";
 
-import TrainingPanel from "./components/TrainingPanel";
-import RecrutamentoPanel from "./components/RecrutamentoPanel";
-import AssessmentPanel from "./components/AssessmentPanel";
-import TIAccessPanel from "./components/TIAccessPanel";
-import TILogsPanel from "./components/TILogsPanel";
-import ClimateSurveyPanel from "./components/ClimateSurveyPanel";
-import VagasPanel from "./components/VagasPanel";
-import InnovationPanel from "./components/InnovationPanel";
+import TrainingPanel from "./pages/TrainingPanel";
+import RecrutamentoPanel from "./pages/RecrutamentoPanel";
+import AssessmentPanel from "./pages/AssessmentPanel";
+import TIAccessPanel from "./pages/TIAccessPanel";
+import TILogsPanel from "./pages/TILogsPanel";
+import ClimateSurveyPanel from "./pages/ClimateSurveyPanel";
+import VagasPanel from "./pages/VagasPanel";
+import InnovationPanel from "./pages/InnovationPanel";
 import AIAssistantWidget from "./components/AIAssistantWidget";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import OnboardingTour from "./components/OnboardingTour";
 import EmployeeProfileView from "./components/EmployeeProfileView";
-import TimeTrackingPanel from "./components/TimeTrackingPanel";
+import TimeTrackingPanel from "./pages/TimeTrackingPanel";
 import CredentialingPipeline from "./components/CredentialingPipeline";
-import EmployeePortalPanel from "./components/EmployeePortalPanel";
-import SadtPanel from "./components/SadtPanel";
-import AtendimentoPanel from "./components/AtendimentoPanel";
-import FinanceiroPanel from "./components/FinanceiroPanel";
-import FaturamentoPanel from "./components/FaturamentoPanel";
-import CustosPanel from "./components/CustosPanel";
-import ComercialPanel from "./components/ComercialPanel";
-import MarketingPanel from "./components/MarketingPanel";
-import SettingsPanel from "./components/SettingsPanel";
-import SesmtPanel from "./components/SesmtPanel";
-import JuridicoPanel from "./components/JuridicoPanel";
-import SegurancaTrabalhoPanel from "./components/SegurancaTrabalhoPanel";
-import AvisosPanel from "./components/AvisosPanel";
-import DiretoriaAdministrativaPanel from "./components/DiretoriaAdministrativaPanel";
-import DiretoriaGeralPanel from "./components/DiretoriaGeralPanel";
-import NetworkPanel from "./components/NetworkPanel";
+import EmployeePortalPanel from "./pages/EmployeePortalPanel";
+import SadtPanel from "./pages/SadtPanel";
+import AtendimentoPanel from "./pages/AtendimentoPanel";
+import FinanceiroPanel from "./pages/FinanceiroPanel";
+import FaturamentoPanel from "./pages/FaturamentoPanel";
+import CustosPanel from "./pages/CustosPanel";
+import ComercialPanel from "./pages/ComercialPanel";
+import MarketingPanel from "./pages/MarketingPanel";
+import SettingsPanel from "./pages/SettingsPanel";
+import SesmtPanel from "./pages/SesmtPanel";
+import JuridicoPanel from "./pages/JuridicoPanel";
+import SegurancaTrabalhoPanel from "./pages/SegurancaTrabalhoPanel";
+import AvisosPanel from "./pages/AvisosPanel";
+import DiretoriaAdministrativaPanel from "./pages/DiretoriaAdministrativaPanel";
+import DiretoriaGeralPanel from "./pages/DiretoriaGeralPanel";
+import NetworkPanel from "./pages/NetworkPanel";
 
-import SuprimentosPanel from "./components/SuprimentosPanel";
+import SuprimentosPanel from "./pages/SuprimentosPanel";
 
 export const getInitialTab = (role: string) => {
   if (role === "apresentador") return "apresentacao";
