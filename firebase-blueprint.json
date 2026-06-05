@@ -1,0 +1,250 @@
+{
+  "entities": {
+    "Pdi": {
+      "title": "Pdi",
+      "description": "Plano de Desenvolvimento Individual contendo dados criptografados",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "cycle": {
+          "type": "string"
+        },
+        "coordinatorName": {
+          "type": "string"
+        },
+        "department": {
+          "type": "string"
+        },
+        "hierarchy": {
+          "type": "string"
+        },
+        "managerId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Rascunho", "Em Curso", "Aguardando Líder", "Aguardando RH", "Aprovado Final", "Em Revisão"]
+        },
+        "encryptedData": {
+          "type": "string",
+          "description": "AES-GCM (ponta-a-ponta) encrypted JSON contendo pontos fortes, melhorias e metas"
+        },
+        "managerFeedback": {
+          "type": "string"
+        },
+        "hrFeedback": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": ["userId", "cycle", "status", "updatedAt"]
+    },
+    "Checkin": {
+      "title": "Checkin",
+      "description": "Check-ins trimestrais ou notas de acompanhamento criptografadas",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "date": {
+          "type": "number"
+        },
+        "authorName": {
+          "type": "string"
+        },
+        "authorRole": {
+          "type": "string"
+        },
+        "encryptedNote": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "date", "authorName", "authorRole", "encryptedNote"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "Sugestões e feedbacks enviadas pelos utilizadores do hospital",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "rating": {
+          "type": "number"
+        },
+        "comment": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": ["userId", "rating", "comment", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Perfil corporativo e metadados",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": ["userId", "email", "name", "role", "createdAt"]
+    },
+    "Aviso": {
+      "title": "Aviso",
+      "description": "Comunicados oficiais e avisos para toda a equipe do hospital",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "string"
+        },
+        "authorId": {
+          "type": "string"
+        },
+        "authorName": {
+          "type": "string"
+        },
+        "authorRole": {
+          "type": "string"
+        },
+        "likes": {
+          "type": "array"
+        },
+        "readBy": {
+          "type": "array"
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": ["id", "title", "content", "category", "priority", "authorId", "authorName", "authorRole", "createdAt"]
+    },
+    "ComentarioAviso": {
+      "title": "ComentarioAviso",
+      "description": "Comentários no quadro de avisos",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "authorId": {
+          "type": "string"
+        },
+        "authorName": {
+          "type": "string"
+        },
+        "authorRole": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": ["id", "authorId", "authorName", "authorRole", "content", "createdAt"]
+    },
+    "CommunityPost": {
+      "title": "CommunityPost",
+      "description": "Posts para a comunidade estilo rede social",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorRole": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "likes": { "type": "array" },
+        "commentCount": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "authorId", "authorName", "authorRole", "content", "likes", "commentCount", "createdAt"]
+    },
+    "CommunityComment": {
+      "title": "CommunityComment",
+      "description": "Comentários em posts da comunidade",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorRole": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "authorId", "authorName", "authorRole", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/pdis/{pdiId}": {
+      "schema": "Pdi",
+      "description": "Fichas de PDI de todos os profissionais de saúde"
+    },
+    "/pdis/{pdiId}/checkins/{checkinId}": {
+      "schema": "Checkin",
+      "description": "Check-ins de acompanhamento contínuo vinculados a um PDI"
+    },
+    "/feedbacks/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "Formulários de melhoria contínua e reporte de bugs do app"
+    },
+    "/userProfiles/{profileId}": {
+      "schema": "UserProfile",
+      "description": "Coleção de perfis com definição de permissões (Colaborador, Líder, RH)"
+    },
+    "/avisos/{avisoId}": {
+      "schema": "Aviso",
+      "description": "Mural de avisos para todo o hospital"
+    },
+    "/avisos/{avisoId}/comentarios/{comentarioId}": {
+      "schema": "ComentarioAviso",
+      "description": "Comentários associados a um determinado aviso"
+    },
+    "/posts/{postId}": {
+      "schema": "CommunityPost",
+      "description": "Posts na rede social interna"
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": "CommunityComment",
+      "description": "Comentários em um post da rede social"
+    }
+  }
+}
+

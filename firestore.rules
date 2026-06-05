@@ -1,0 +1,207 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reuseable primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role;
+    }
+
+    function hasUserRoleDocument() {
+      return exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid));
+    }
+
+    // Rules for UserProfile
+    match /userProfiles/{profileId} {
+      allow create: if isSignedIn() 
+                    && profileId == request.auth.uid 
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.role in ["colaborador", "lider", "rh", "ti"]
+                    && request.resource.data.email is string
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() <= 100;
+                    
+      allow read: if isSignedIn();
+                      
+      allow update: if isSignedIn() 
+                    && profileId == request.auth.uid
+                    // Only let RH change role fields
+                    && (request.resource.data.role == resource.data.role || (hasUserRoleDocument() && getUserRole() == "rh"));
+                    
+      allow delete: if isSignedIn() && hasUserRoleDocument() && getUserRole() == "rh";
+    }
+
+    // Rules for Notifications
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Rules for General Feedbacks
+    match /feedbacks/{feedbackId} {
+      allow create: if isSignedIn() 
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.comment is string
+                    && request.resource.data.comment.size() <= 1000
+                    && request.resource.data.rating is number;
+                    
+      allow read: if isSignedIn() 
+                  && (resource.data.userId == request.auth.uid 
+                      || (hasUserRoleDocument() && getUserRole() == "rh"));
+                      
+      allow update, delete: if isSignedIn() && hasUserRoleDocument() && getUserRole() == "rh";
+    }
+
+    // Rules for Pdi records
+    match /pdis/{pdiId} {
+      allow create: if isSignedIn() 
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.cycle is string
+                    && request.resource.data.cycle.size() <= 10;
+                    
+      allow read: if isSignedIn();
+                      
+      allow update: if isSignedIn() 
+                    && (
+                      // Case A: Owner updating their own active PDI
+                      (resource.data.userId == request.auth.uid 
+                       && resource.data.status != "Aprovado Final"
+                       && request.resource.data.userId == resource.data.userId
+                       && request.resource.data.cycle == resource.data.cycle)
+                      ||
+                      // Case B: Direct Manager reviewing / giving feedback
+                      (resource.data.managerId == request.auth.uid
+                       && request.resource.data.userId == resource.data.userId
+                       && request.resource.data.cycle == resource.data.cycle)
+                      ||
+                      // Case C: RH review
+                      (hasUserRoleDocument() && getUserRole() == "rh")
+                    );
+                    
+      allow delete: if isSignedIn() && hasUserRoleDocument() && getUserRole() == "rh";
+    }
+
+    // Rules for Checkins/Notes Subcollection in Pdis
+    match /pdis/{pdiId}/checkins/{checkinId} {
+      allow read: if isSignedIn();
+                      
+      allow create: if isSignedIn() 
+                    && (get(/databases/$(database)/documents/pdis/$(pdiId)).data.userId == request.auth.uid
+                        || get(/databases/$(database)/documents/pdis/$(pdiId)).data.managerId == request.auth.uid
+                        || (hasUserRoleDocument() && getUserRole() == "rh"))
+                    && request.resource.data.encryptedNote is string
+                    && request.resource.data.encryptedNote.size() <= 10000;
+                    
+      allow update, delete: if isSignedIn() && hasUserRoleDocument() && getUserRole() == "rh";
+    }
+
+    // Rules for Avisos (Hospital Messaging Board)
+    match /avisos/{avisoId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+                    && hasUserRoleDocument()
+                    && getUserRole() in ["rh", "lider", "ti", "diretor_administrativo", "diretor_geral"]
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() <= 200
+                    && request.resource.data.content is string
+                    && request.resource.data.content.size() <= 10000;
+
+      allow update: if isSignedIn()
+                    && (
+                      // Full access for administrators / authors
+                      (hasUserRoleDocument() && getUserRole() in ["rh", "lider", "ti", "diretor_administrativo", "diretor_geral"])
+                      ||
+                      // Non-administrative users can only update reactions (likes, readBy) without changing core notice details
+                      (
+                        request.resource.data.title == resource.data.title
+                        && request.resource.data.content == resource.data.content
+                        && request.resource.data.category == resource.data.category
+                        && request.resource.data.priority == resource.data.priority
+                        && request.resource.data.authorId == resource.data.authorId
+                        && request.resource.data.authorName == resource.data.authorName
+                        && request.resource.data.authorRole == resource.data.authorRole
+                        && request.resource.data.createdAt == resource.data.createdAt
+                      )
+                    );
+
+      allow delete: if isSignedIn()
+                    && hasUserRoleDocument()
+                    && (
+                      getUserRole() in ["rh", "lider", "ti", "diretor_administrativo", "diretor_geral"]
+                      || resource.data.authorId == request.auth.uid
+                    );
+    }
+
+    // Rules for Comentarios under Avisos
+    match /avisos/{avisoId}/comentarios/{comentarioId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.content is string
+                    && request.resource.data.content.size() <= 1000;
+
+      allow update, delete: if isSignedIn()
+                            && (
+                              resource.data.authorId == request.auth.uid
+                              || (hasUserRoleDocument() && getUserRole() in ["rh", "lider", "ti", "diretor_administrativo", "diretor_geral"])
+                            );
+    }
+
+    // Rules for Community Posts
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.content is string
+                    && request.resource.data.content.size() <= 10000;
+
+      allow update: if isSignedIn()
+                    && (
+                      (resource.data.authorId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content'])) ||
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'commentCount', 'imageUrl', 'videoUrl'])
+                    );
+
+      allow delete: if isSignedIn()
+                    && (
+                      resource.data.authorId == request.auth.uid ||
+                      (hasUserRoleDocument() && getUserRole() in ["rh", "lider", "ti", "diretor_administrativo", "diretor_geral"])
+                    );
+    }
+
+    // Rules for Community Comments
+    match /posts/{postId}/comments/{commentId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.content is string
+                    && request.resource.data.content.size() <= 2000;
+
+      allow update, delete: if isSignedIn()
+                            && (
+                              resource.data.authorId == request.auth.uid ||
+                              (hasUserRoleDocument() && getUserRole() in ["rh", "lider", "ti", "diretor_administrativo", "diretor_geral"])
+                            );
+    }
+  }
+}
+

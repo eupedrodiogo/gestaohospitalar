@@ -1,0 +1,8 @@
+{
+  "name": "GestaoHospitalar",
+  "description": "Plano de gestão completa para a equipe de Gente e Gestão com criptografia ponta a ponta e sincronização segura de dados para o Hospital São Francisco.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

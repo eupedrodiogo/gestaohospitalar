@@ -1,0 +1,17 @@
+{
+  "name": "GenteGestão - HSF",
+  "short_name": "GenteGestão",
+  "description": "Plataforma de Gente & Gestão do HSF",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "https://api.dicebear.com/9.x/shapes/svg?seed=HSF&backgroundColor=461d15",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

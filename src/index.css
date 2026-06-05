@@ -1,0 +1,222 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* Tech Dark Theme (Default/Atual) */
+  --theme-bg: #020617;
+  --theme-slate-950: #020617;
+  --theme-slate-900: #0f172a;
+  --theme-slate-850: #162032; /* slate-850 custom */
+  --theme-slate-800: #1e293b;
+  --theme-slate-700: #334155;
+  --theme-slate-650: #3f4f66; /* slate-650 custom */
+  --theme-slate-600: #475569;
+  --theme-slate-500: #64748b;
+  --theme-slate-400: #94a3b8;
+  --theme-slate-300: #cbd5e1;
+  --theme-slate-250: #d1d9e2; /* slate-250 custom */
+  --theme-slate-200: #e2e8f0;
+  --theme-slate-100: #f1f5f9;
+  --theme-slate-50: #f8fafc;
+  
+  --theme-teal-300: #5eead4;
+  --theme-teal-400: #2dd4bf;
+  --theme-teal-450: #20c9b3;
+  --theme-teal-500: #14b8a6;
+  --theme-teal-600: #0d9488;
+  
+  --theme-white: #ffffff;
+  --theme-black: #000000;
+  --theme-text-white: #ffffff;
+  --theme-card-opacity: 0.95;
+}
+
+:root[data-theme="light"] {
+  /* Standard Light Theme */
+  --theme-bg: #f8fafc;
+  --theme-slate-950: #f8fafc;
+  --theme-slate-900: #f1f5f9;
+  --theme-slate-850: #e8ecf1;
+  --theme-slate-800: #e2e8f0;
+  --theme-slate-700: #cbd5e1;
+  --theme-slate-650: #b0bfd1;
+  --theme-slate-600: #94a3b8;
+  --theme-slate-500: #64748b;
+  --theme-slate-400: #475569;
+  --theme-slate-300: #334155;
+  --theme-slate-250: #2c384a;
+  --theme-slate-200: #1e293b;
+  --theme-slate-100: #0f172a;
+  --theme-slate-50: #020617;
+
+  --theme-teal-300: #2dd4bf;
+  --theme-teal-400: #0d9488;
+  --theme-teal-450: #0f766e;
+  --theme-teal-500: #0f766e;
+  --theme-teal-600: #14b8a6;
+  
+  --theme-text-white: #0f172a;
+  --theme-card-opacity: 1;
+}
+
+:root[data-theme="hsf"] {
+  /* HSF Brand Identity Theme - Crisp Light matching website */
+  --theme-bg: #F8F8F8; /* Light gray background */
+  --theme-slate-950: #F8F8F8;
+  --theme-slate-900: #ffffff; /* Pure white for cards */
+  --theme-slate-850: #f0f0f0;
+  --theme-slate-800: #e5e5e5; /* Borders */
+  --theme-slate-700: #d4d4d4; 
+  --theme-slate-650: #b0bfd1;
+  --theme-slate-600: #888888;
+  --theme-slate-500: #666666; /* Neutral text */
+  --theme-slate-400: #512E26; /* Dark brown for accents/headings */
+  --theme-slate-300: #4a2c23; /* Dark brown main accent */
+  --theme-slate-250: #333333; 
+  --theme-slate-200: #222222; /* Body text */
+  --theme-slate-100: #111111;
+  --theme-slate-50: #000000;
+
+  --theme-teal-300: #855549; /* Even lighter brown */
+  --theme-teal-400: #6c4036; /* Lighter brown hover */
+  --theme-teal-450: #512E26;
+  --theme-teal-500: #512E26; /* Primary dark brown */
+  --theme-teal-600: #3c211b; /* Active darker brown */
+  
+  --theme-text-white: #ffffff;
+  --theme-card-opacity: 1;
+}
+
+:root[data-theme="hsf-dark"] {
+  /* HSF Brand Identity Theme - Dark mode (Softened) */
+  --theme-bg: #2b1710;
+  --theme-slate-950: #2b1710;
+  --theme-slate-900: #3c231a; /* Card background */
+  --theme-slate-850: #4d2b20;
+  --theme-slate-800: #5c372a; /* Borders / dark accent */
+  --theme-slate-700: #6e4336; /* Secondary buttons/accents */
+  --theme-slate-650: #7c5043;
+  --theme-slate-600: #8a6155; /* Muted text */
+  --theme-slate-500: #a1796c; /* Highlight/pinkish texts */
+  --theme-slate-400: #ad8a7d; /* Light skin/pink */
+  --theme-slate-300: #c9b1a7; 
+  --theme-slate-250: #dfcfc9;
+  --theme-slate-200: #ebe5e3; /* Base text */
+  --theme-slate-100: #f5f3f2;
+  --theme-slate-50: #ffffff;
+
+  --theme-teal-300: #c5a496; /* Lightest pinkish */
+  --theme-teal-400: #ad8a7d; /* Accent texts */
+  --theme-teal-450: #a1796c;
+  --theme-teal-500: #6e4336; /* Primary accent */
+  --theme-teal-600: #4d2b20; /* Dark border / active */
+  
+  --theme-text-white: #ffffff;
+  --theme-card-opacity: 0.95;
+}
+
+:root[data-theme="dark-hsf"] {
+  /* Tech Dark Backgrounds + HSF Accent Colors */
+  --theme-bg: #020617;
+  --theme-slate-950: #020617;
+  --theme-slate-900: #0f172a;
+  --theme-slate-850: #162032; 
+  --theme-slate-800: #1e293b;
+  --theme-slate-700: #334155;
+  --theme-slate-650: #3f4f66; 
+  --theme-slate-600: #475569;
+  --theme-slate-500: #64748b;
+  --theme-slate-400: #94a3b8;
+  --theme-slate-300: #cbd5e1;
+  --theme-slate-250: #d1d9e2; 
+  --theme-slate-200: #e2e8f0;
+  --theme-slate-100: #f1f5f9;
+  --theme-slate-50: #f8fafc;
+
+  /* HSF Accents instead of teal */
+  --theme-teal-300: #e8d7cf; /* Lightest variant */
+  --theme-teal-400: #dcc1b5; /* Light variant (text, outlines) */
+  --theme-teal-450: #a1796c;
+  --theme-teal-500: #6e4336; /* Main button / badge color */
+  --theme-teal-600: #4d2b20; /* Hover states */
+  
+  --theme-text-white: #ffffff;
+  --theme-card-opacity: 0.95;
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-slate-50: var(--theme-slate-50);
+  --color-slate-100: var(--theme-slate-100);
+  --color-slate-200: var(--theme-slate-200);
+  --color-slate-300: var(--theme-slate-300);
+  --color-slate-400: var(--theme-slate-400);
+  --color-slate-500: var(--theme-slate-500);
+  --color-slate-600: var(--theme-slate-600);
+  --color-slate-700: var(--theme-slate-700);
+  --color-slate-800: var(--theme-slate-800);
+  --color-slate-900: var(--theme-slate-900);
+  --color-slate-950: var(--theme-slate-950);
+  
+  --color-teal-300: var(--theme-teal-300);
+  --color-teal-400: var(--theme-teal-400);
+  --color-teal-500: var(--theme-teal-500);
+  --color-teal-600: var(--theme-teal-600);
+  
+  /* We maintain true white for specific UI elements, but override text-white */
+  --color-white: var(--theme-text-white);
+  --color-true-white: #ffffff;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--theme-bg);
+  color: var(--theme-slate-200);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom styled gradients and glows from Immersive UI theme */
+.glow-border {
+  box-shadow: 0 0 15px rgba(var(--theme-teal-400), 0.12), inset 0 0 5px rgba(var(--theme-teal-400), 0.08);
+}
+
+.card-gradient {
+  background: var(--theme-slate-900);
+}
+
+.active-glow {
+  background: radial-gradient(circle at center, var(--theme-teal-400) 0%, transparent 70%);
+  opacity: 0.15;
+}
+
+.platform-badge {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-template, #print-template *,
+  #print-certificate, #print-certificate * {
+    visibility: visible;
+  }
+  #print-template, #print-certificate {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background-color: white !important;
+    color: black !important;
+  }
+}
+
