@@ -416,16 +416,7 @@ export default function App() {
     setShowOnboarding(false);
   };
 
-  const [currentTheme, setCurrentTheme] = useState<
-    "hsf" | "dark" | "light" | "hsf-dark" | "dark-hsf"
-  >(() => {
-    return (localStorage.getItem("hsf_theme_v3") as any) || "hsf";
-  });
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", currentTheme);
-    localStorage.setItem("hsf_theme_v3", currentTheme);
-  }, [currentTheme]);
+  // Theme is now managed by ThemeProvider
 
   // E2EE Cryptography Passphrase
   const [passphrase, setPassphrase] = useState<string>(() => {
@@ -1242,8 +1233,6 @@ export default function App() {
         isRetryingAuth={isRetryingAuth}
         onRetryAuth={handleRetryAuth}
         onActivateOfflineMode={handleActivateOfflineMode}
-        currentTheme={currentTheme}
-        setCurrentTheme={setCurrentTheme}
       />
     );
   }
@@ -1952,8 +1941,7 @@ export default function App() {
         onShowNotif={toggleNotifMenu}
         isOfflineDemo={isOfflineDemo}
         onExitOfflineDemo={handleExitOfflineMode}
-        currentTheme={currentTheme}
-        setCurrentTheme={setCurrentTheme}
+
         onLogout={() => {
           setProfile(null);
           localStorage.removeItem("hsf_pdi_offline_mode");

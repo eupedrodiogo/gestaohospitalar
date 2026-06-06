@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { translations, Language } from '../utils/translations';
 import { UserProfile } from '../types';
 import { Mail, User, Shield, Briefcase, ChevronRight, AlertCircle, ExternalLink, RefreshCw, Palette } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface LoginScreenProps {
   currentLang: Language;
@@ -11,8 +12,6 @@ interface LoginScreenProps {
   isRetryingAuth?: boolean;
   onRetryAuth?: () => void;
   onActivateOfflineMode?: (name: string, email: string, role: string) => void;
-  currentTheme: "hsf" | "dark" | "light" | "hsf-dark" | "dark-hsf";
-  setCurrentTheme: (theme: "hsf" | "dark" | "light" | "hsf-dark" | "dark-hsf") => void;
 }
 
 export default function LoginScreen({ 
@@ -22,10 +21,9 @@ export default function LoginScreen({
   projectId = 'gen-lang-client-0746295906',
   isRetryingAuth = false,
   onRetryAuth,
-  onActivateOfflineMode,
-  currentTheme,
-  setCurrentTheme
+  onActivateOfflineMode
 }: LoginScreenProps) {
+  const { currentTheme, setCurrentTheme } = useTheme();
   const t = translations[currentLang];
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');

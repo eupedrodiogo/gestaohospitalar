@@ -21,8 +21,12 @@ if (typeof document !== 'undefined') {
   });
 }
 
+import { ThemeProvider } from './contexts/ThemeContext';
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
   </StrictMode>,
 );
