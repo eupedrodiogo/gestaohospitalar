@@ -64,21 +64,7 @@ import {
 } from "lucide-react";
 import { PresentationView } from "./components/PresentationView";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
-import { db, auth, handleFirestoreError, OperationType } from "./lib/firebase";
-import {
-  collection,
-  doc,
-  setDoc,
-  addDoc,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  query,
-  where,
-  orderBy,
-  getDocFromServer,
-  deleteDoc,
-} from "firebase/firestore";
+
 import { supabase } from "./lib/supabase";
 
 import { Language, translations } from "./utils/translations";
@@ -583,11 +569,11 @@ export default function App() {
         setCurrentUser({ uid: sbUser.id, email: sbUser.email || "anon@saofrancisco.com.br" } as any);
         setAuthError(null);
         
-        // Load existing user profile doc (Firestore still used for data until Phase B)
+        // Load existing user profile doc via Supabase
         try {
-          const profDoc = await getDoc(doc(db, "userProfiles", sbUser.id));
-          if (profDoc.exists()) {
-            const profData = profDoc.data() as UserProfile;
+          const { data, error } = await supabase.from("user_profiles").select("*").eq("id", sbUser.id).single();
+          if (data) {
+            const profData = data as UserProfile;
             setProfile(profData);
             setCurrentLang(profData.language || "pt");
             setActiveTab(getInitialTab(profData.role));
@@ -988,43 +974,45 @@ export default function App() {
     }
 
     // Listen to Profiles (needed for list and role matching)
-    const unsubProfiles = onSnapshot(collection(db, "userProfiles"), (snap) => {
-      const list: UserProfile[] = [];
-      snap.forEach((doc) => {
-        list.push(doc.data() as UserProfile);
-      });
-      setAllProfiles(list);
-    });
+    // Fetch initial data for all three tables
+    const fetchInitialData = async () => {
+      try {
+        const [profRes, pdiRes, notifRes] = await Promise.all([
+          supabase.from("user_profiles").select("*"),
+          supabase.from("pdis").select("*"),
+          supabase.from("notifications").select("*").eq("userId", currentUser.uid).order("createdAt", { ascending: false })
+        ]);
+        if (profRes.data) setAllProfiles(profRes.data as UserProfile[]);
+        if (pdiRes.data) setAllPdis(pdiRes.data as Pdi[]);
+        if (notifRes.data) setNotifications(notifRes.data as any[]);
+      } catch (err) {
+        console.error("Erro ao carregar dados iniciais do Supabase:", err);
+      }
+    };
 
-    // Listen all pdic
-    const unsubPdis = onSnapshot(collection(db, "pdis"), (snap) => {
-      const list: Pdi[] = [];
-      snap.forEach((doc) => {
-        list.push({ ...doc.data() } as Pdi);
-      });
-      setAllPdis(list);
-    });
+    fetchInitialData();
 
-    // Listen notifications for this user
-    const unsubNotifs = onSnapshot(
-      query(
-        collection(db, "notifications"),
-        where("userId", "==", currentUser.uid),
-      ),
-      (snap) => {
-        const list: any[] = [];
-        snap.forEach((doc) => {
-          list.push({ id: doc.id, ...doc.data() });
+    // Subscribe to realtime changes
+    const channel = supabase.channel('app_realtime_main')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, () => {
+        supabase.from("user_profiles").select("*").then(({data}) => {
+          if(data) setAllProfiles(data as UserProfile[]);
         });
-        list.sort((a, b) => b.createdAt - a.createdAt);
-        setNotifications(list);
-      },
-    );
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pdis' }, () => {
+        supabase.from("pdis").select("*").then(({data}) => {
+          if(data) setAllPdis(data as Pdi[]);
+        });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `userId=eq.${currentUser.uid}` }, () => {
+        supabase.from("notifications").select("*").eq("userId", currentUser.uid).order("createdAt", { ascending: false }).then(({data}) => {
+          if(data) setNotifications(data as any[]);
+        });
+      })
+      .subscribe();
 
     return () => {
-      unsubProfiles();
-      unsubPdis();
-      unsubNotifs();
+      supabase.removeChannel(channel);
     };
   }, [currentUser, profile, isOfflineDemo]);
 
@@ -1107,30 +1095,32 @@ export default function App() {
       return () => {};
     }
 
-    const unsubCheckins = onSnapshot(
-      collection(db, "pdis", targetPdi.id, "checkins"),
-      async (snap) => {
+    const fetchCheckins = async () => {
+      const { data } = await supabase.from("checkins").select("*").eq("pdi_id", targetPdi.id);
+      if (data) {
         const list: Checkin[] = [];
-        for (const doc of snap.docs) {
-          const item = doc.data() as Checkin;
+        for (const item of data) {
           try {
-            const decryptedNote = await decryptText(
-              item.encryptedNote,
-              passphrase,
-            );
+            const decryptedNote = await decryptText(item.encryptedNote, passphrase);
             list.push({ ...item, encryptedNote: decryptedNote });
           } catch {
-            list.push({
-              ...item,
-              encryptedNote: "[Erro ao decodificar nota de checkin]",
-            });
+            list.push({ ...item, encryptedNote: "[Erro ao decodificar nota de checkin]" });
           }
         }
-        list.sort((a, b) => a.date - b.date);
+        list.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         setCheckinsCache((prev) => ({ ...prev, [targetPdi.id]: list }));
-      },
-    );
-    return () => unsubCheckins();
+      }
+    };
+    
+    fetchCheckins();
+
+    const channel = supabase.channel(`checkins_${targetPdi.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'checkins', filter: `pdi_id=eq.${targetPdi.id}` }, () => {
+        fetchCheckins();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [selectedPdi, myPdi, passphrase, isOfflineDemo]);
 
   useEffect(() => {
@@ -1198,12 +1188,12 @@ export default function App() {
     }
 
     try {
-      await setDoc(doc(db, "userProfiles", currentUser.uid), prof);
+      await supabase.from("user_profiles").upsert({ id: currentUser.uid, ...prof });
       setProfile(prof);
       setCurrentLang(formData.language);
       showToast("Perfil de acesso criado com absoluto sigilo!");
     } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, "userProfiles");
+      console.error(e);
     }
   };
 
@@ -1246,7 +1236,7 @@ export default function App() {
       // In a real app we'd batch these
       await Promise.all(
         unreadIds.map((id) =>
-          setDoc(doc(db, "notifications", id), { read: true }, { merge: true }),
+          supabase.from("notifications").update({ read: true }).eq("id", id)
         ),
       );
     } catch {}
@@ -1269,11 +1259,7 @@ export default function App() {
       return;
     }
     try {
-      await setDoc(
-        doc(db, "notifications", id),
-        { read: true },
-        { merge: true },
-      );
+      await supabase.from("notifications").update({ read: true }).eq("id", id);
     } catch (e) {
       console.warn(e);
     }
@@ -1329,7 +1315,7 @@ export default function App() {
     }
 
     try {
-      const updatePromise = setDoc(doc(db, "pdis", pdiId), newPdi);
+      const updatePromise = supabase.from("pdis").upsert({ id: pdiId, user_id: currentUser.uid, ...newPdi });
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error("Timeout inicializando PDI")), 10000)
       );
@@ -1341,7 +1327,7 @@ export default function App() {
     } catch (error: any) {
       setSaveStatus("error");
       console.error("Create PDI Error:", error);
-      handleFirestoreError(error, OperationType.CREATE, "pdis");
+      console.error(error);
     }
   };
 
@@ -1411,9 +1397,7 @@ export default function App() {
         return;
       }
 
-      const updatePromise = setDoc(doc(db, "pdis", targetPdi.id), updatePayload, {
-        merge: true,
-      });
+      const updatePromise = supabase.from("pdis").update(updatePayload).eq("id", targetPdi.id);
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error("Timeout autosalvando")), 10000)
       );
@@ -1499,9 +1483,7 @@ export default function App() {
     }
 
     try {
-      const updatePromise = setDoc(doc(db, "pdis", targetPdi.id), updatePayload, {
-        merge: true,
-      });
+      const updatePromise = supabase.from("pdis").update(updatePayload).eq("id", targetPdi.id);
 
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error("Timeout atingido conectando ao Firebase.")), 10000)
@@ -1521,14 +1503,13 @@ export default function App() {
       // Secure access audit notification: Send real-time mail/notif to colleague
       if (profile?.role !== "colaborador") {
         const feedbackMsg = managerFback || hrFback || "Status alterado";
-        await addDoc(collection(db, "notifications"), {
+        await supabase.from("notifications").insert([{
           userId: targetPdi.userId,
           title: `Atualização de Status: PDI ${targetPdi.cycle}`,
           message: `O status do seu PDI foi atualizado para [${newStatus}]. Faça login para ver mais detalhes.`,
           feedback: feedbackMsg,
           read: false,
-          createdAt: Date.now(),
-        });
+        }]);
       }
       if (profile?.role === "colaborador" && newStatus === "Aguardando Líder") {
         setShowSuccessModal(true);
@@ -1609,19 +1590,18 @@ export default function App() {
         return;
       }
 
-      await setDoc(doc(db, "pdis", targetPdi.id, "checkins", checkinId), item);
+      await supabase.from("checkins").insert([{ ...item, pdi_id: targetPdi.id }]);
       setNewCheckin("");
       setNewStressLevel(3);
 
       // Notify other parties
       if (profile?.role !== "colaborador") {
-        await addDoc(collection(db, "notifications"), {
+        await supabase.from("notifications").insert([{
           userId: targetPdi.userId,
           title: "Nova nota de Alinhamento (1-on-1)",
           message: `${profile?.name} adicionou um registo contínuo ao seu ciclo de metas.`,
           read: false,
-          createdAt: Date.now(),
-        });
+        }]);
       }
       showToast("Nota de acompanhamento selada e criptografada com sucesso!");
     } catch (e) {
@@ -1651,7 +1631,7 @@ export default function App() {
       }
 
       // If firebase
-      await deleteDoc(doc(db, "pdis", targetPdiId));
+      await supabase.from("pdis").delete().eq("id", targetPdiId);
       if (selectedPdi?.id === targetPdiId) {
         setSelectedPdi(null);
       }
@@ -1787,10 +1767,9 @@ export default function App() {
             passphrase,
           );
 
-          await setDoc(
-            doc(db, "pdis", pdiId),
-            {
-              userId: currentUser.uid,
+          await supabase.from("pdis").upsert({
+              id: pdiId,
+              user_id: currentUser.uid,
               cycle: item.cycle || "2026",
               coordinatorName: profile.name,
               department: "Serviço de Saúde HSF (Restaurado)",
@@ -1800,10 +1779,7 @@ export default function App() {
               encryptedData: ciphertext,
               managerFeedback: item.managerFeedback || "",
               hrFeedback: item.hrFeedback || "",
-              updatedAt: Date.now(),
-            },
-            { merge: true },
-          );
+          });
         }
       }
       return true;
