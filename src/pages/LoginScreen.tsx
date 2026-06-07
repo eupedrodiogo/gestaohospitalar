@@ -149,44 +149,35 @@ export default function LoginScreen({
                 <AlertCircle className="w-5 h-5 text-teal-400 shrink-0 mt-0.5" />
                 <div>
                   <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wide">
-                    {authError === 'admin-restricted-operation'
-                      ? 'Autenticação Anônima Desativada'
-                      : 'Erro de Autenticação Firebase'}
+                    Erro de Conexão (Supabase)
                   </h3>
                   <p className="text-[11px] text-slate-300 leading-normal mt-1">
-                    {authError === 'admin-restricted-operation'
-                      ? 'A autenticação silenciosa falhou porque o provedor "Anônimo" (Anonymous sign-in) está desativado no console do seu projeto Firebase.'
-                      : `Houve uma falha na conexão com os serviços do Firebase: ${authError}`}
+                    A autenticação silenciosa falhou. Verifique se o provedor "Anonymous" está ativado no seu projeto Supabase, ou se as variáveis de ambiente estão corretas. 
+                    <br/><br/>Detalhes do Erro: {authError}
                   </p>
                 </div>
               </div>
 
-              {authError === 'admin-restricted-operation' && (
+              {authError && (
                 <div className="pt-2.5 border-t border-slate-900 space-y-3 text-[11.5px] text-zinc-300">
                   <div className="font-bold text-teal-300/80 text-[10px] uppercase tracking-wider">
-                    Como ativar em 30 segundos no Console:
+                    Como ativar o login anônimo no Supabase:
                   </div>
                   <ol className="list-decimal pl-4.5 space-y-1.5 leading-relaxed text-slate-400">
-                    <li>
-                      Clique no botão abaixo para abrir o painel <span className="text-slate-250 font-medium font-mono bg-slate-900 px-1 py-0.5 rounded">Sign-in method</span> da sua conta.
-                    </li>
-                    <li>
-                      Pressione <span className="text-slate-250 font-medium">Adicionar novo provedor</span> (Add new provider).
-                    </li>
-                    <li>
-                      Escolha <span className="text-slate-250 font-medium">Anônimo</span> (Anonymous), marque a caixa para <span className="text-slate-250 font-medium">Ativar</span> (Enable) e salve.
-                    </li>
+                    <li>Acesse seu painel do Supabase.</li>
+                    <li>Vá em <strong>Authentication</strong> &gt; <strong>Providers</strong>.</li>
+                    <li>Ative a opção <strong>Anonymous</strong>.</li>
                   </ol>
                   
                   <div className="flex flex-col gap-2 pt-1">
                     <div className="flex flex-col sm:flex-row gap-2">
                       <a
-                        href={`https://console.firebase.google.com/project/${projectId}/authentication/providers`}
+                        href="https://supabase.com/dashboard/project/_/auth/providers"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-[10px] uppercase tracking-wider py-2.5 px-4 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
-                        <span>Abrir Firebase Console</span>
+                        <span>Abrir Supabase Dashboard</span>
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                       
@@ -380,7 +371,7 @@ export default function LoginScreen({
             )}
             <Shield className={`w-4 h-4 relative z-10 ${authError ? 'text-slate-500' : 'text-teal-100 group-hover:text-white transition-colors duration-300'}`} />
             <span className="relative z-10 text-teal-50 group-hover:text-white transition-colors duration-300">
-              {authError ? 'Ative o Login Anônimo no Firebase...' : t.accessButton}
+              {authError ? 'Ative o Login Anônimo no Supabase...' : t.accessButton}
             </span>
             <ChevronRight className="w-4 h-4 relative z-10 text-teal-300/70 group-hover:text-white group-hover:translate-x-1 transition-all duration-300" />
           </button>

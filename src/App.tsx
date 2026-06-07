@@ -79,7 +79,7 @@ import {
   getDocFromServer,
   deleteDoc,
 } from "firebase/firestore";
-import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
+import { supabase } from "./lib/supabase";
 
 import { Language, translations } from "./utils/translations";
 import { UserProfile, Pdi, Checkin, DecryptedPdiData, Pdi5W2HItem, LearningEvidence } from "./types";
@@ -576,20 +576,16 @@ export default function App() {
       return;
     }
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setCurrentUser(user);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const sbUser = session?.user;
+      if (sbUser) {
+        // Map Supabase User to expected currentUser format
+        setCurrentUser({ uid: sbUser.id, email: sbUser.email || "anon@saofrancisco.com.br" } as any);
         setAuthError(null);
-        // Test firestore connection
+        
+        // Load existing user profile doc (Firestore still used for data until Phase B)
         try {
-          await getDocFromServer(doc(db, "test_con", "ping"));
-        } catch (e) {
-          console.log("Firebase ping tested.");
-        }
-
-        // Load existing user profile doc
-        try {
-          const profDoc = await getDoc(doc(db, "userProfiles", user.uid));
+          const profDoc = await getDoc(doc(db, "userProfiles", sbUser.id));
           if (profDoc.exists()) {
             const profData = profDoc.data() as UserProfile;
             setProfile(profData);
@@ -600,45 +596,33 @@ export default function App() {
           console.warn("Could not load userProfile:", err);
         }
       } else {
-        // Trigger silent anonymous signin to initiate standard secure connection
+        // Trigger silent anonymous signin via Supabase
         try {
-          await signInAnonymously(auth);
+          const { error: signInError } = await supabase.auth.signInAnonymously();
+          if (signInError) throw signInError;
           setAuthError(null);
         } catch (err: any) {
-          console.error("Firebase Anonymous auth failed: ", err);
+          console.error("Supabase Anonymous auth failed: ", err);
           const errMsg = err?.code || err?.message || String(err);
-          if (
-            errMsg.includes("admin-restricted-operation") ||
-            errMsg.includes("auth/admin-restricted-operation")
-          ) {
-            setAuthError("admin-restricted-operation");
-          } else {
-            setAuthError(errMsg);
-          }
+          setAuthError(errMsg);
         }
       }
       setIsAuthReady(true);
     });
 
-    return () => unsubscribeAuth();
+    return () => { subscription.unsubscribe(); };
   }, [isOfflineDemo]);
 
   const handleRetryAuth = async () => {
     setIsRetryingAuth(true);
     try {
-      await signInAnonymously(auth);
+      const { error: signInError } = await supabase.auth.signInAnonymously();
+      if (signInError) throw signInError;
       setAuthError(null);
     } catch (err: any) {
-      console.error("Firebase Anonymous auth retry failed: ", err);
+      console.error("Supabase Anonymous auth retry failed: ", err);
       const errMsg = err?.code || err?.message || String(err);
-      if (
-        errMsg.includes("admin-restricted-operation") ||
-        errMsg.includes("auth/admin-restricted-operation")
-      ) {
-        setAuthError("admin-restricted-operation");
-      } else {
-        setAuthError(errMsg);
-      }
+      setAuthError(errMsg);
     } finally {
       setIsRetryingAuth(false);
     }
