@@ -571,7 +571,7 @@ export default function App() {
         
         // Load existing user profile doc via Supabase
         try {
-          const { data, error } = await supabase.from("user_profiles").select("*").eq("id", sbUser.id).single();
+          const { data, error } = await supabase.from("user_profiles").select("*").eq("userId", sbUser.id).single();
           if (data) {
             const profData = data as UserProfile;
             setProfile(profData);
@@ -582,16 +582,10 @@ export default function App() {
           console.warn("Could not load userProfile:", err);
         }
       } else {
-        // Trigger silent anonymous signin via Supabase
-        try {
-          const { error: signInError } = await supabase.auth.signInAnonymously();
-          if (signInError) throw signInError;
-          setAuthError(null);
-        } catch (err: any) {
-          console.error("Supabase Anonymous auth failed: ", err);
-          const errMsg = err?.code || err?.message || String(err);
-          setAuthError(errMsg);
-        }
+        // Sem usuário logado, apenas limpa
+        setCurrentUser(null);
+        setProfile(null);
+        setAuthError(null);
       }
       setIsAuthReady(true);
     });
@@ -600,18 +594,8 @@ export default function App() {
   }, [isOfflineDemo]);
 
   const handleRetryAuth = async () => {
-    setIsRetryingAuth(true);
-    try {
-      const { error: signInError } = await supabase.auth.signInAnonymously();
-      if (signInError) throw signInError;
-      setAuthError(null);
-    } catch (err: any) {
-      console.error("Supabase Anonymous auth retry failed: ", err);
-      const errMsg = err?.code || err?.message || String(err);
-      setAuthError(errMsg);
-    } finally {
-      setIsRetryingAuth(false);
-    }
+    // Removido o retry de login anônimo
+    setAuthError(null);
   };
 
   const handleActivateOfflineMode = (
@@ -1159,9 +1143,7 @@ export default function App() {
   }
 
   // Handle secure profile login check
-  const handleLoginCheck = async (email: string) => {
-    if (!currentUser) return;
-
+  const handleLoginCheck = async (email: string, password?: string) => {
     if (isOfflineDemo) {
       const stored = localStorage.getItem("hsf_offline_profiles");
       let list = stored ? JSON.parse(stored) : [];
@@ -1169,7 +1151,8 @@ export default function App() {
 
       if (profileMock) {
         // Vincula o usuário offline
-        const updatedProfile = { ...profileMock, userId: currentUser.uid };
+        const updatedProfile = { ...profileMock, userId: "offline_user_id" };
+        setCurrentUser({ uid: "offline_user_id", email } as any);
         setProfile(updatedProfile);
         setCurrentLang(updatedProfile.language || "pt");
         showToast("Acesso Liberado no Modo de Demonstração!");
@@ -1180,18 +1163,23 @@ export default function App() {
     }
 
     try {
-      // Verifica no Supabase se a equipe de TI já cadastrou o e-mail
-      const { data, error } = await supabase.from("user_profiles").select("*").eq("email", email).single();
-
-      if (error || !data) {
-        setAuthError("Acesso Restrito: Seu e-mail não foi encontrado na base de colaboradores. Entre em contato com a equipe de TI do Hospital São Francisco para liberar seu acesso.");
+      if (!password) {
+        setAuthError("Por favor, insira a senha para acessar.");
         return;
       }
 
-      // Se encontrou, garantimos que o perfil carrega no sistema
-      const profData = data as UserProfile;
-      setProfile(profData);
-      setCurrentLang(profData.language || "pt");
+      // Autenticação com Senha no Supabase
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        setAuthError("Acesso Restrito: E-mail ou senha incorretos.");
+        return;
+      }
+
+      // Se o login for bem-sucedido, o onAuthStateChange cuidará do resto e carregará o perfil da tabela user_profiles
       showToast("Acesso Liberado com sucesso!");
     } catch (e) {
       console.error(e);

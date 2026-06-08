@@ -1,45 +1,102 @@
-import React, { useState } from 'react';
-import { Shield, Users, Key, Search, Edit2, Trash2, X, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Shield, Search, Check, X, Plus, Key, Trash2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
-type UserData = {
-  id: number;
+type UserProfileData = {
+  userId: string;
   name: string;
+  email: string;
   role: string;
   status: string;
   lastLogin: string;
 };
 
 export default function TIAccessPanel() {
-  const [users, setUsers] = useState<UserData[]>([
-    { id: 1, name: 'Pedro (Auxiliar)', role: 'Colaborador', status: 'Ativo', lastLogin: '28/05/2026 10:15' },
-    { id: 2, name: 'Rafael (Coordenador)', role: 'Lider', status: 'Ativo', lastLogin: '27/05/2026 16:42' },
-    { id: 3, name: 'Márcia (RH)', role: 'RH', status: 'Inativo', lastLogin: '15/05/2026 09:10' },
-    { id: 4, name: 'João (TI)', role: 'TI', status: 'Ativo', lastLogin: '28/05/2026 12:20' }
-  ]);
+  const [users, setUsers] = useState<UserProfileData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  
+  // Form para novo usuário
+  const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newRole, setNewRole] = useState('colaborador');
 
-  const [editingUserId, setEditingUserId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<Partial<UserData>>({});
-
-  const handleDelete = (id: number) => {
-    if (confirm('Tem certeza que deseja remover este usuário?')) {
-      setUsers(users.filter(u => u.id !== id));
+  const fetchUsers = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from('user_profiles').select('*').order('name');
+    
+    if (error) {
+      console.error(error);
+      setErrorMsg("Erro ao carregar usuários.");
+    } else if (data) {
+      setUsers(data.map(u => ({
+        userId: u.userId,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        status: 'Ativo',
+        lastLogin: new Date(u.createdAt).toLocaleDateString('pt-BR')
+      })));
     }
+    setLoading(false);
   };
 
-  const handleEdit = (user: UserData) => {
-    setEditingUserId(user.id);
-    setEditForm({ ...user });
-  };
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-  const handleSave = () => {
-    if (editingUserId) {
-      setUsers(users.map(u => u.id === editingUserId ? { ...u, ...editForm } as UserData : u));
-      setEditingUserId(null);
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+    setErrorMsg(null);
+
+    try {
+      // 1. Criar usuário no Supabase Auth usando um cliente secundário para não deslogar o usuário atual (TI)
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      const adminClient = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+
+      const { data: authData, error: authError } = await adminClient.auth.signUp({
+        email: newEmail,
+        password: newPassword,
+      });
+
+      if (authError) throw new Error("Erro ao criar credenciais: " + authError.message);
+      if (!authData.user) throw new Error("Usuário não retornado.");
+
+      // 2. Inserir o perfil na tabela user_profiles (Permitido pelo RLS porque o usuário logado é 'ti')
+      const { error: dbError } = await supabase.from('user_profiles').insert([{
+        userId: authData.user.id,
+        name: newName,
+        email: newEmail,
+        role: newRole,
+        language: 'pt'
+      }]);
+
+      if (dbError) throw new Error("Erro ao salvar perfil no banco de dados: " + dbError.message);
+
+      // Sucesso
+      setIsModalOpen(false);
+      setNewName('');
+      setNewEmail('');
+      setNewPassword('');
+      setNewRole('colaborador');
+      fetchUsers();
+      alert("Usuário criado com sucesso!");
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || "Ocorreu um erro desconhecido.");
+    } finally {
+      setIsCreating(false);
     }
-  };
-
-  const handleCancel = () => {
-    setEditingUserId(null);
   };
 
   return (
@@ -49,7 +106,7 @@ export default function TIAccessPanel() {
           <Shield className="w-6 h-6 text-teal-400" />
           Gerenciamento de Acessos
         </h2>
-        <p className="text-slate-400 text-sm">Controle de perfis, permissões e status de contas.</p>
+        <p className="text-slate-400 text-sm">Controle de perfis, permissões e status de contas de toda a organização.</p>
       </div>
 
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
@@ -62,98 +119,118 @@ export default function TIAccessPanel() {
               className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-200 outline-none focus:border-teal-500/50 transition-colors"
             />
           </div>
-          <button className="w-full sm:w-auto bg-teal-500 hover:bg-teal-400 text-slate-950 px-4 py-2 rounded-xl text-sm font-bold transition-all">
-            + Novo Usuário
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-400 text-slate-950 px-4 py-2 rounded-xl text-sm font-bold transition-all"
+          >
+            <Plus className="w-4 h-4" /> Novo Usuário
           </button>
         </div>
+
+        {errorMsg && (
+          <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            {errorMsg}
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
                 <th className="pb-3 font-medium">Nome</th>
+                <th className="pb-3 font-medium">E-mail</th>
                 <th className="pb-3 font-medium">Perfil</th>
                 <th className="pb-3 font-medium">Status</th>
-                <th className="pb-3 font-medium">Último Login</th>
                 <th className="pb-3 font-medium text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="text-sm">
-              {users.map(user => (
-                <tr key={user.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                  {editingUserId === user.id ? (
-                    <>
-                      <td className="py-4">
-                        <input
-                          type="text"
-                          value={editForm.name || ''}
-                          onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                          className="w-full bg-slate-950 border border-slate-700 rounded p-1 text-sm text-slate-200 outline-none focus:border-teal-500"
-                        />
-                      </td>
-                      <td className="py-4">
-                        <select
-                          value={editForm.role || ''}
-                          onChange={e => setEditForm(prev => ({ ...prev, role: e.target.value }))}
-                          className="w-full bg-slate-950 border border-slate-700 rounded p-1 text-sm text-slate-200 outline-none focus:border-teal-500"
-                        >
-                          <option value="Colaborador">Colaborador</option>
-                          <option value="Lider">Lider</option>
-                          <option value="RH">RH</option>
-                          <option value="TI">TI</option>
-                        </select>
-                      </td>
-                      <td className="py-4">
-                        <select
-                          value={editForm.status || ''}
-                          onChange={e => setEditForm(prev => ({ ...prev, status: e.target.value }))}
-                          className="w-full bg-slate-950 border border-slate-700 rounded p-1 text-sm text-slate-200 outline-none focus:border-teal-500"
-                        >
-                          <option value="Ativo">Ativo</option>
-                          <option value="Inativo">Inativo</option>
-                        </select>
-                      </td>
-                      <td className="py-4 text-slate-500">{user.lastLogin}</td>
-                      <td className="py-4 flex justify-end gap-2">
-                        <button onClick={handleSave} className="p-1.5 text-teal-400 hover:bg-teal-400/10 rounded-lg transition-colors" title="Salvar">
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button onClick={handleCancel} className="p-1.5 text-slate-400 hover:text-teal-400 hover:bg-teal-400/10 rounded-lg transition-colors" title="Cancelar">
-                          <X className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="py-4 text-slate-200">{user.name}</td>
-                      <td className="py-4 text-slate-400">{user.role}</td>
-                      <td className="py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          user.status === 'Ativo' ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' : 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
-                        }`}>
-                          {user.status}
-                        </span>
-                      </td>
-                      <td className="py-4 text-slate-500">{user.lastLogin}</td>
-                      <td className="py-4 flex justify-end gap-2">
-                        <button className="p-1.5 text-slate-400 hover:text-teal-400 hover:bg-teal-400/10 rounded-lg transition-colors" title="Redefinir Senha">
-                          <Key className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleEdit(user)} className="p-1.5 text-slate-400 hover:text-teal-400 hover:bg-teal-400/10 rounded-lg transition-colors" title="Editar">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(user.id)} className="p-1.5 text-slate-400 hover:text-teal-400 hover:bg-teal-400/10 rounded-lg transition-colors" title="Remover">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </>
-                  )}
-                </tr>
-              ))}
+              {loading ? (
+                <tr><td colSpan={5} className="py-8 text-center text-slate-500">Carregando usuários...</td></tr>
+              ) : users.length === 0 ? (
+                <tr><td colSpan={5} className="py-8 text-center text-slate-500">Nenhum usuário encontrado.</td></tr>
+              ) : (
+                users.map(user => (
+                  <tr key={user.userId} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
+                    <td className="py-4 text-slate-200 font-medium">{user.name}</td>
+                    <td className="py-4 text-slate-400">{user.email}</td>
+                    <td className="py-4 text-slate-400 capitalize">{user.role}</td>
+                    <td className="py-4">
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-400 border border-teal-500/20">
+                        {user.status}
+                      </span>
+                    </td>
+                    <td className="py-4 flex justify-end gap-2">
+                      <button className="p-1.5 text-slate-400 hover:text-teal-400 hover:bg-teal-400/10 rounded-lg transition-colors" title="Sem implementação">
+                        <Key className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Modal de Criação */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <Plus className="w-5 h-5 text-teal-400" />
+                Cadastrar Novo Usuário
+              </h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateUser} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1">Nome Completo</label>
+                <input required type="text" value={newName} onChange={e => setNewName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none" />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1">E-mail</label>
+                <input required type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1">Senha Provisória</label>
+                <input required type="text" value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1">Perfil (Role)</label>
+                <select value={newRole} onChange={e => setNewRole(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none">
+                  <option value="colaborador">Colaborador</option>
+                  <option value="lider">Líder / Coordenador</option>
+                  <option value="rh">RH</option>
+                  <option value="ti">TI</option>
+                </select>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button type="button" onClick={() => setIsModalOpen(false)}
+                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 rounded-xl text-sm font-bold transition-all">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={isCreating}
+                  className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50 flex justify-center items-center gap-2">
+                  {isCreating ? 'Criando...' : <><Check className="w-4 h-4"/> Salvar</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

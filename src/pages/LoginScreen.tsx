@@ -6,7 +6,7 @@ import { useTheme } from '../contexts/ThemeContext';
 
 interface LoginScreenProps {
   currentLang: Language;
-  onLoginSuccess: (email: string) => void;
+  onLoginSuccess: (email: string, password?: string) => void;
   authError?: string | null;
   projectId?: string;
   isRetryingAuth?: boolean;
@@ -26,12 +26,13 @@ export default function LoginScreen({
   const { currentTheme, setCurrentTheme } = useTheme();
   const t = translations[currentLang];
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
 
-    onLoginSuccess(email.trim());
+    onLoginSuccess(email.trim(), password);
   };
 
   const hierarchyOptions = [
@@ -261,6 +262,24 @@ export default function LoginScreen({
             </div>
           </div>
 
+          {/* Password input */}
+          <div className="space-y-2">
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Senha
+            </label>
+            <div className="relative">
+              <Key className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Sua senha de acesso"
+                className="w-full bg-slate-950/60 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm focus:border-teal-500 focus:ring-0 text-slate-200 placeholder-slate-650"
+              />
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={!!authError}
@@ -277,7 +296,7 @@ export default function LoginScreen({
             )}
             <Shield className={`w-4 h-4 relative z-10 ${authError ? 'text-slate-500' : 'text-teal-100 group-hover:text-white transition-colors duration-300'}`} />
             <span className="relative z-10 text-teal-50 group-hover:text-white transition-colors duration-300">
-              {authError ? 'Ative o Login Anônimo no Supabase...' : t.accessButton}
+              {authError ? 'Erro de Conexão' : t.accessButton}
             </span>
             <ChevronRight className="w-4 h-4 relative z-10 text-teal-300/70 group-hover:text-white group-hover:translate-x-1 transition-all duration-300" />
           </button>
