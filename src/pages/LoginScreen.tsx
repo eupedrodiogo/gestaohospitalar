@@ -25,14 +25,14 @@ export default function LoginScreen({
 }: LoginScreenProps) {
   const { currentTheme, setCurrentTheme } = useTheme();
   const t = translations[currentLang];
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!username.trim()) return;
 
-    onLoginSuccess(email.trim(), password);
+    onLoginSuccess(username.trim(), password);
   };
 
   const hierarchyOptions = [
@@ -206,19 +206,19 @@ export default function LoginScreen({
             ))}
           </div>
 
-          {/* Email input */}
+          {/* Username input */}
           <div className="space-y-2">
             <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              {t.enterEmail}
+              Usuário de Acesso
             </label>
             <div className="relative">
-              <Mail className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
+              <User className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
               <input
-                type="email"
+                type="text"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="exemplo@spitalsaofrancisco.com.br"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="ex: pdsmello"
                 className="w-full bg-slate-950/60 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm focus:border-teal-500 focus:ring-0 text-slate-200 placeholder-slate-650"
               />
             </div>

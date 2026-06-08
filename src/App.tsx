@@ -1149,21 +1149,24 @@ export default function App() {
   }
 
   // Handle secure profile login check
-  const handleLoginCheck = async (email: string, password?: string) => {
+  const handleLoginCheck = async (username: string, password?: string) => {
+    // Transforma o "usuário" num "e-mail" válido para o Supabase Auth
+    const corporativeEmail = `${username.toLowerCase()}@hsf.local`;
+
     if (isOfflineDemo) {
       const stored = localStorage.getItem("hsf_offline_profiles");
       let list = stored ? JSON.parse(stored) : [];
-      const profileMock = list.find((p: any) => p.email.toLowerCase() === email.toLowerCase());
+      const profileMock = list.find((p: any) => p.email.toLowerCase() === corporativeEmail);
 
       if (profileMock) {
         // Vincula o usuário offline
         const updatedProfile = { ...profileMock, userId: "offline_user_id" };
-        setCurrentUser({ uid: "offline_user_id", email } as any);
+        setCurrentUser({ uid: "offline_user_id", email: corporativeEmail } as any);
         setProfile(updatedProfile);
         setCurrentLang(updatedProfile.language || "pt");
         showToast("Acesso Liberado no Modo de Demonstração!");
       } else {
-        setAuthError("Acesso Restrito: Seu e-mail não está cadastrado. Solicite acesso à equipe de TI.");
+        setAuthError("Acesso Restrito: Seu usuário não está cadastrado. Solicite acesso à equipe de TI.");
       }
       return;
     }
@@ -1174,14 +1177,14 @@ export default function App() {
         return;
       }
 
-      // Autenticação com Senha no Supabase
+      // Autenticação com Senha no Supabase usando o email montado
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: corporativeEmail,
         password,
       });
 
       if (error) {
-        setAuthError("Acesso Restrito: E-mail ou senha incorretos.");
+        setAuthError("Acesso Restrito: Usuário ou senha incorretos.");
         return;
       }
 

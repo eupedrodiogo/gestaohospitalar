@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 type UserProfileData = {
   userId: string;
   name: string;
-  email: string;
+  username: string;
   role: string;
   status: string;
   lastLogin: string;
@@ -22,7 +22,7 @@ export default function TIAccessPanel() {
   
   // Form para novo usuário
   const [newName, setNewName] = useState('');
-  const [newEmail, setNewEmail] = useState('');
+  const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('colaborador');
 
@@ -37,7 +37,7 @@ export default function TIAccessPanel() {
       setUsers(data.map(u => ({
         userId: u.userId,
         name: u.name,
-        email: u.email,
+        username: u.email.replace('@hsf.local', ''),
         role: u.role,
         status: 'Ativo',
         lastLogin: new Date(u.createdAt).toLocaleDateString('pt-BR')
@@ -56,7 +56,7 @@ export default function TIAccessPanel() {
     setErrorMsg(null);
 
     try {
-      // 1. Criar usuário no Supabase Auth usando um cliente secundário para não deslogar o usuário atual (TI)
+      // 1. Criar usuário no Supabase Auth usando um cliente secundário
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
@@ -64,8 +64,10 @@ export default function TIAccessPanel() {
         auth: { persistSession: false, autoRefreshToken: false }
       });
 
+      const corporativeEmail = `${newUsername.toLowerCase().trim()}@hsf.local`;
+
       const { data: authData, error: authError } = await adminClient.auth.signUp({
-        email: newEmail,
+        email: corporativeEmail,
         password: newPassword,
       });
 
@@ -76,7 +78,7 @@ export default function TIAccessPanel() {
       const { error: dbError } = await supabase.from('user_profiles').insert([{
         userId: authData.user.id,
         name: newName,
-        email: newEmail,
+        email: corporativeEmail,
         role: newRole,
         language: 'pt'
       }]);
@@ -86,7 +88,7 @@ export default function TIAccessPanel() {
       // Sucesso
       setIsModalOpen(false);
       setNewName('');
-      setNewEmail('');
+      setNewUsername('');
       setNewPassword('');
       setNewRole('colaborador');
       fetchUsers();
@@ -138,7 +140,7 @@ export default function TIAccessPanel() {
             <thead>
               <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
                 <th className="pb-3 font-medium">Nome</th>
-                <th className="pb-3 font-medium">E-mail</th>
+                <th className="pb-3 font-medium">Usuário</th>
                 <th className="pb-3 font-medium">Perfil</th>
                 <th className="pb-3 font-medium">Status</th>
                 <th className="pb-3 font-medium text-right">Ações</th>
@@ -153,7 +155,7 @@ export default function TIAccessPanel() {
                 users.map(user => (
                   <tr key={user.userId} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
                     <td className="py-4 text-slate-200 font-medium">{user.name}</td>
-                    <td className="py-4 text-slate-400">{user.email}</td>
+                    <td className="py-4 text-slate-400">{user.username}</td>
                     <td className="py-4 text-slate-400 capitalize">{user.role}</td>
                     <td className="py-4">
                       <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-400 border border-teal-500/20">
@@ -195,9 +197,9 @@ export default function TIAccessPanel() {
               </div>
               
               <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1">E-mail</label>
-                <input required type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none" />
+                <label className="block text-xs font-bold text-slate-400 mb-1">Usuário de Acesso</label>
+                <input required type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none" placeholder="ex: pdsmello" />
               </div>
 
               <div>
