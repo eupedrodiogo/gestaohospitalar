@@ -113,7 +113,9 @@ UX Premium: Uma quebra do padrão de "sistemas hospitalares antigos e cinzas" en
 Sempre aberto a conexões inspiradoras, feedbacks de código e propostas de parcerias para escalar esse produto visionário!
 
 • LinkedIn: https://www.linkedin.com/in/pedrodiogooficial
+
 • Portfólio: https://eupedrodiogo.web.app
+
 • E-mail: pedrodiogo.suporte@gmail.com
 <p align="center">
 <i>Desenvolvido com sofisticação em TypeScript e admiração pela área da saúde. ❤️🏥</i>
