@@ -1158,42 +1158,44 @@ export default function App() {
     );
   }
 
-  // Handle secure profile login onboarding
-  const handleOnboarding = async (
-    formData: Omit<UserProfile, "userId" | "createdAt">,
-  ) => {
+  // Handle secure profile login check
+  const handleLoginCheck = async (email: string) => {
     if (!currentUser) return;
-    const prof: UserProfile = {
-      userId: currentUser.uid,
-      email: formData.email,
-      name: formData.name,
-      role: formData.role,
-      language: formData.language,
-      createdAt: Date.now(),
-    };
 
     if (isOfflineDemo) {
-      setProfile(prof);
-      setCurrentLang(formData.language);
-
       const stored = localStorage.getItem("hsf_offline_profiles");
       let list = stored ? JSON.parse(stored) : [];
-      list = list.filter((p: any) => p.userId !== currentUser.uid);
-      list.unshift(prof);
-      localStorage.setItem("hsf_offline_profiles", JSON.stringify(list));
-      setAllProfiles(list);
+      const profileMock = list.find((p: any) => p.email.toLowerCase() === email.toLowerCase());
 
-      showToast("Perfil de acesso criado localmente com absoluto sigilo!");
+      if (profileMock) {
+        // Vincula o usuário offline
+        const updatedProfile = { ...profileMock, userId: currentUser.uid };
+        setProfile(updatedProfile);
+        setCurrentLang(updatedProfile.language || "pt");
+        showToast("Acesso Liberado no Modo de Demonstração!");
+      } else {
+        setAuthError("Acesso Restrito: Seu e-mail não está cadastrado. Solicite acesso à equipe de TI.");
+      }
       return;
     }
 
     try {
-      await supabase.from("user_profiles").upsert({ id: currentUser.uid, ...prof });
-      setProfile(prof);
-      setCurrentLang(formData.language);
-      showToast("Perfil de acesso criado com absoluto sigilo!");
+      // Verifica no Supabase se a equipe de TI já cadastrou o e-mail
+      const { data, error } = await supabase.from("user_profiles").select("*").eq("email", email).single();
+
+      if (error || !data) {
+        setAuthError("Acesso Restrito: Seu e-mail não foi encontrado na base de colaboradores. Entre em contato com a equipe de TI do Hospital São Francisco para liberar seu acesso.");
+        return;
+      }
+
+      // Se encontrou, garantimos que o perfil carrega no sistema
+      const profData = data as UserProfile;
+      setProfile(profData);
+      setCurrentLang(profData.language || "pt");
+      showToast("Acesso Liberado com sucesso!");
     } catch (e) {
       console.error(e);
+      setAuthError("Erro ao validar credenciais. Tente novamente ou contate a TI.");
     }
   };
 
@@ -1201,7 +1203,7 @@ export default function App() {
     return (
       <LoginScreen
         currentLang={currentLang}
-        onLoginSuccess={handleOnboarding}
+        onLoginSuccess={handleLoginCheck}
         authError={authError}
         projectId="gen-lang-client-0746295906"
         isRetryingAuth={isRetryingAuth}

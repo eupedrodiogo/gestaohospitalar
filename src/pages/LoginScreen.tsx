@@ -6,7 +6,7 @@ import { useTheme } from '../contexts/ThemeContext';
 
 interface LoginScreenProps {
   currentLang: Language;
-  onLoginSuccess: (profile: Omit<UserProfile, 'userId' | 'createdAt'>) => void;
+  onLoginSuccess: (email: string) => void;
   authError?: string | null;
   projectId?: string;
   isRetryingAuth?: boolean;
@@ -26,20 +26,12 @@ export default function LoginScreen({
   const { currentTheme, setCurrentTheme } = useTheme();
   const t = translations[currentLang];
   const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [role, setRole] = useState<string>('colaborador');
-  const [hierarchy, setHierarchy] = useState('Especialista');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !name.trim()) return;
+    if (!email.trim()) return;
 
-    onLoginSuccess({
-      email: email.trim(),
-      name: name.trim(),
-      role,
-      language: currentLang,
-    });
+    onLoginSuccess(email.trim());
   };
 
   const hierarchyOptions = [
@@ -241,12 +233,7 @@ export default function LoginScreen({
                       role.id as any
                     );
                   } else {
-                    onLoginSuccess({
-                      email: role.email,
-                      name: role.name,
-                      role: role.id as any,
-                      language: currentLang,
-                    });
+                    onLoginSuccess(role.email);
                   }
                 }}
                 className="flex-1 min-w-[70px] bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-300 font-bold text-[10px] uppercase py-2 px-2 rounded-lg transition-colors cursor-pointer"
@@ -271,87 +258,6 @@ export default function LoginScreen({
                 placeholder="exemplo@spitalsaofrancisco.com.br"
                 className="w-full bg-slate-950/60 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm focus:border-teal-500 focus:ring-0 text-slate-200 placeholder-slate-650"
               />
-            </div>
-          </div>
-
-          {/* Name input */}
-          <div className="space-y-2">
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              {t.enterName}
-            </label>
-            <div className="relative">
-              <User className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Dra. Mariana Silva"
-                className="w-full bg-slate-950/60 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm focus:border-teal-500 focus:ring-0 text-slate-200 placeholder-slate-650"
-              />
-            </div>
-          </div>
-
-          {/* Hierarchy designation dropdown */}
-          <div className="space-y-2">
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              {t.filterHierarchy}
-            </label>
-            <div className="relative">
-              <Briefcase className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
-              <select
-                value={hierarchy}
-                onChange={(e) => setHierarchy(e.target.value)}
-                className="w-full bg-slate-950/60 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm focus:border-teal-500 focus:ring-0 text-slate-205 appearance-none cursor-pointer"
-              >
-                {hierarchyOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value} className="bg-slate-950 text-slate-200">
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Access profile roles selectors */}
-          <div className="space-y-2 pt-2">
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              {t.selectRole}
-            </label>
-            
-            <div className="grid grid-cols-1 gap-2.5">
-              {[
-                { id: 'colaborador', title: 'Colaborador', desc: t.roleColaborador },
-                { id: 'lider', title: 'Líder / Gestor', desc: t.roleLider },
-                { id: 'rh', title: 'Diretoria / RH', desc: t.roleRH },
-                { id: 'ti', title: 'Equipe de TI', desc: t.roleTi },
-                { id: 'apresentador', title: 'Apresentador / Pitch', desc: 'Acesso exclusivo para apresentação e demonstração' },
-                { id: 'sesmt', title: 'Medicina do Trabalho', desc: 'Gerenciar saúde e ergonomia dos colaboradores' },
-              ].map((item) => (
-                <button
-                  type="button"
-                  key={item.id}
-                  onClick={() => setRole(item.id)}
-                  className={`w-full p-3.5 rounded-xl text-left border flex items-start gap-3 transition-all ${
-                    role === item.id
-                      ? 'bg-teal-500/10 border-teal-500/40 shadow-[0_0_15px_rgba(45,212,191,0.08)] text-teal-400'
-                      : 'bg-slate-900/40 border-slate-800 text-slate-300 hover:bg-slate-800/40'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    checked={role === item.id}
-                    readOnly
-                    className="mt-1 h-4 w-4 text-teal-500 border-slate-700 focus:ring-teal-450 bg-slate-950"
-                  />
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-105">{item.title}</h4>
-                    <p className="text-[11px] text-slate-400 font-medium leading-normal mt-0.5">
-                      {item.desc}
-                    </p>
-                  </div>
-                </button>
-              ))}
             </div>
           </div>
 
