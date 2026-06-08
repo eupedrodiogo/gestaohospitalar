@@ -44,7 +44,7 @@ Optamos por uma stack moderna que garante **alta escalabilidade e fácil manuten
 | **Data Viz** | Recharts + Lucide | Gráficos limpos e compreensíveis, iconografia consistente em todo o software. |
 | **Backend/BFF** | Express + Node.js (via ESBuild) | Padrão robusto para servir as rotas da API, proteger as *API Keys* da IA, e gerenciar sessões. |
 | **IA Engine** | `@google/genai` (Gemini) | Inferência linguística de ponta para análise sentimental dos funcionários. |
-| **Cloud/BaaS** | Firebase (Firestore/Auth) | Integração serverless para gestão dos usuários (auth) e do banco de dados em tempo real. |
+| **Cloud/BaaS** | Supabase (PostgreSQL/Auth) | Integração serverless para gestão dos usuários (auth) e do banco de dados em tempo real. |
 
 ---
 
