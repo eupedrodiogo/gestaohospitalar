@@ -61,7 +61,12 @@ export default function TIAccessPanel() {
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
       const adminClient = createClient(supabaseUrl, supabaseAnonKey, {
-        auth: { persistSession: false, autoRefreshToken: false }
+        auth: { 
+          persistSession: false, 
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+          storageKey: 'admin-temp-key'
+        }
       });
 
       const corporativeEmail = `${newUsername.toLowerCase().trim()}@hsf.local`;
