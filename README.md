@@ -5,16 +5,17 @@
   </p>
 
   <p>
+    <strong>Sistema Full-Stack de Gestão Hospitalar, Inteligência Artificial e Analytics</strong>
+  </p>
+
+  <p>
     <img src="https://img.shields.io/badge/React-19-blue.svg?style=flat&logo=react" alt="React 19" />
     <img src="https://img.shields.io/badge/TypeScript-5-blue.svg?style=flat&logo=typescript" alt="TypeScript" />
     <img src="https://img.shields.io/badge/Tailwind%20CSS-4-38B2AC.svg?style=flat&logo=tailwind-css" alt="Tailwind CSS" />
     <img src="https://img.shields.io/badge/Node.js-Backend-green.svg?style=flat&logo=node.js" alt="Node.js" />
     <img src="https://img.shields.io/badge/Gemini-AI%20Integration-orange.svg?style=flat&logo=google" alt="Gemini AI" />
-    <img src="https://img.shields.io/badge/Firebase-Backend%20as%20a%20Service-ffca28.svg?style=flat&logo=firebase" alt="Firebase" />
+    <img src="https://img.shields.io/badge/Supabase-Backend%20as%20a%20Service-3ecf8e.svg?style=flat&logo=supabase" alt="Supabase" />
   </p>
-</div>
-
-<hr />
 
 ## 📖 Sobre o Projeto
 
@@ -110,7 +111,10 @@ UX Premium: Uma quebra do padrão de "sistemas hospitalares antigos e cinzas" en
 
 📬 Contato & Networking
 Sempre aberto a conexões inspiradoras, feedbacks de código e propostas de parcerias para escalar esse produto visionário!
-LinkedIn: Seu Nome
-Portfólio: Seu Site
-E-mail: seu-email@dominio.com
-
+LinkedIn: https://www.linkedin.com/in/pedrodiogooficial
+Portfólio: eupedrodiogo.web.app
+E-mail: pedrodiogo.suporte@gmail.com
+<p align="center">
+<i>Desenvolvido com sofisticação em TypeScript e paixão pelo setor de saúde. ❤️🏥</i>
+</p>
+```
