@@ -1,21 +1,16 @@
 <h1>🏥 Gestão Hospitalar | Plataforma de Gestão Integrada por IA</h1>
 
-  <p>
-    <strong>Sistema Full-Stack de Gestão Hospitalar, Inteligência Artificial e Analytics</strong>
-  </p>
+  Sistema Full-Stack de Gestão Hospitalar, Inteligência Artificial e Analytics
 
-  <p>
-    <strong>Sistema Full-Stack de Gestão Hospitalar, Inteligência Artificial e Analytics</strong>
-  </p>
-
-  <p>
-    <img src="https://img.shields.io/badge/React-19-blue.svg?style=flat&logo=react" alt="React 19" />
-    <img src="https://img.shields.io/badge/TypeScript-5-blue.svg?style=flat&logo=typescript" alt="TypeScript" />
-    <img src="https://img.shields.io/badge/Tailwind%20CSS-4-38B2AC.svg?style=flat&logo=tailwind-css" alt="Tailwind CSS" />
-    <img src="https://img.shields.io/badge/Node.js-Backend-green.svg?style=flat&logo=node.js" alt="Node.js" />
-    <img src="https://img.shields.io/badge/Gemini-AI%20Integration-orange.svg?style=flat&logo=google" alt="Gemini AI" />
-    <img src="https://img.shields.io/badge/Supabase-Backend%20as%20a%20Service-3ecf8e.svg?style=flat&logo=supabase" alt="Supabase" />
-  </p>
+<p>
+  <img src="https://img.shields.io/badge/React-19-blue.svg?style=flat&logo=react" alt="React 19" />
+  <img src="https://img.shields.io/badge/TypeScript-5-blue.svg?style=flat&logo=typescript" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Tailwind%20CSS-4-38B2AC.svg?style=flat&logo=tailwind-css" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Node.js-Backend-green.svg?style=flat&logo=node.js" alt="Node.js" />
+  <img src="https://img.shields.io/badge/Gemini-AI%20Integration-orange.svg?style=flat&logo=google" alt="Gemini AI" />
+  <img src="https://img.shields.io/badge/Supabase-Backend%20as%20a%20Service-3ecf8e.svg?style=flat&logo=supabase" alt="Supabase" />
+  <img src="https://img.shields.io/badge/Vercel-Deploy-000000.svg?style=flat&logo=vercel&logoColor=white" alt="Vercel" />
+</p>
 
 ## 📖 Sobre o Projeto
 
