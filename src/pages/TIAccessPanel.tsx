@@ -129,11 +129,7 @@ export default function TIAccessPanel() {
           </button>
         </div>
 
-        {errorMsg && (
-          <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-            {errorMsg}
-          </div>
-        )}
+
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -190,6 +186,11 @@ export default function TIAccessPanel() {
             </div>
             
             <form onSubmit={handleCreateUser} className="p-5 space-y-4">
+              {errorMsg && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+                  {errorMsg}
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-slate-400 mb-1">Nome Completo</label>
                 <input required type="text" value={newName} onChange={e => setNewName(e.target.value)}
