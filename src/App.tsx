@@ -572,14 +572,20 @@ export default function App() {
         // Load existing user profile doc via Supabase
         try {
           const { data, error } = await supabase.from("user_profiles").select("*").eq("userId", sbUser.id).single();
-          if (data) {
+          if (error) {
+            console.warn("Could not load userProfile:", error);
+            setAuthError("Conta logada, mas o perfil não foi encontrado (" + error.message + "). Verifique a coluna userId.");
+          } else if (data) {
             const profData = data as UserProfile;
             setProfile(profData);
             setCurrentLang(profData.language || "pt");
             setActiveTab(getInitialTab(profData.role));
+          } else {
+            setAuthError("Sua conta existe, mas o perfil não foi vinculado. Contate a TI.");
           }
-        } catch (err) {
-          console.warn("Could not load userProfile:", err);
+        } catch (err: any) {
+          console.warn("Exception loading userProfile:", err);
+          setAuthError("Erro interno ao buscar perfil: " + err.message);
         }
       } else {
         // Sem usuário logado, apenas limpa
