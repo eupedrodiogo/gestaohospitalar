@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { translations, Language } from '../utils/translations';
 import { UserProfile } from '../types';
-import { Mail, User, Shield, Briefcase, ChevronRight, AlertCircle, ExternalLink, RefreshCw, Palette } from 'lucide-react';
+import { Mail, User, Shield, Briefcase, ChevronRight, AlertCircle, ExternalLink, RefreshCw, Palette, Key } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface LoginScreenProps {
