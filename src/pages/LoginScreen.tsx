@@ -135,75 +135,37 @@ export default function LoginScreen({
 
         {/* Input Form */}
         <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5 relative">
-          {/* Autenticação Anônima Error / Block */}
+          {/* Login Error / Block */}
           {authError && (
-            <div className="bg-teal-500/10 border border-teal-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 text-left text-slate-200">
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 sm:p-5 space-y-3.5 text-left text-slate-200">
               <div className="flex items-start gap-2.5">
-                <AlertCircle className="w-5 h-5 text-teal-400 shrink-0 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wide">
-                    Erro de Conexão (Supabase)
+                  <h3 className="text-xs font-bold text-red-400 uppercase tracking-wide">
+                    Erro de Autenticação
                   </h3>
                   <p className="text-[11px] text-slate-300 leading-normal mt-1">
-                    A autenticação silenciosa falhou. Verifique se o provedor "Anonymous" está ativado no seu projeto Supabase, ou se as variáveis de ambiente estão corretas. 
-                    <br/><br/>Detalhes do Erro: {authError}
+                    {authError}
                   </p>
                 </div>
               </div>
 
-              {authError && (
-                <div className="pt-2.5 border-t border-slate-900 space-y-3 text-[11.5px] text-zinc-300">
-                  <div className="font-bold text-teal-300/80 text-[10px] uppercase tracking-wider">
-                    Como ativar o login anônimo no Supabase:
-                  </div>
-                  <ol className="list-decimal pl-4.5 space-y-1.5 leading-relaxed text-slate-400">
-                    <li>Acesse seu painel do Supabase.</li>
-                    <li>Vá em <strong>Authentication</strong> &gt; <strong>Providers</strong>.</li>
-                    <li>Ative a opção <strong>Anonymous</strong>.</li>
-                  </ol>
-                  
-                  <div className="flex flex-col gap-2 pt-1">
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <a
-                        href="https://supabase.com/dashboard/project/_/auth/providers"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-[10px] uppercase tracking-wider py-2.5 px-4 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <span>Abrir Supabase Dashboard</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                      
-                      {onRetryAuth && (
-                        <button
-                          type="button"
-                          onClick={onRetryAuth}
-                          disabled={isRetryingAuth}
-                          className="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-850 text-teal-400 font-bold text-[10px] uppercase tracking-wider py-2.5 px-4 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 ${isRetryingAuth ? 'animate-spin' : ''}`} />
-                          <span>{isRetryingAuth ? 'Processando...' : 'Tentar Novamente'}</span>
-                        </button>
-                      )}
-                    </div>
-
-                    {onActivateOfflineMode && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onActivateOfflineMode(
-                            name.trim() || 'Pedro (Auxiliar)',
-                            email.trim() || 'pedro@saofrancisco.com.br',
-                            role
-                          );
-                        }}
-                        className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-[10px] uppercase tracking-wider py-2.5 px-4 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer mt-1"
-                      >
-                        <Shield className="w-3.5 h-3.5 shrink-0" />
-                        <span>Ignorar e Entrar no Modo de Demonstração (Simular Offline)</span>
-                      </button>
-                    )}
-                  </div>
+              {onActivateOfflineMode && (
+                <div className="pt-2.5 border-t border-slate-900 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onActivateOfflineMode(
+                        'Pedro (Auxiliar)',
+                        'pedro@saofrancisco.com.br',
+                        'colaborador'
+                      );
+                    }}
+                    className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[10px] uppercase tracking-wider py-2.5 px-4 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer mt-1"
+                  >
+                    <Shield className="w-3.5 h-3.5 shrink-0" />
+                    <span>Entrar no Modo de Demonstração (Offline)</span>
+                  </button>
                 </div>
               )}
             </div>
