@@ -244,21 +244,16 @@ export default function LoginScreen({
 
           <button
             type="submit"
-            disabled={!!authError}
-            className={`group w-full font-bold text-xs uppercase tracking-[0.2em] py-4 px-6 rounded-xl transition-all duration-500 flex items-center justify-center gap-3 mt-6 select-none relative overflow-hidden ${
-              authError
-                ? 'bg-slate-900/50 text-slate-500 border border-slate-800 cursor-not-allowed shadow-none backdrop-blur-sm'
-                : 'bg-gradient-to-r from-teal-600 via-teal-500 to-teal-600 bg-[length:200%_auto] hover:bg-right text-white shadow-xl shadow-teal-900/20 hover:shadow-teal-500/30 border border-teal-500/30 hover:border-teal-400/50 hover:-translate-y-0.5'
-            }`}
+            className={`group w-full font-bold text-xs uppercase tracking-[0.2em] py-4 px-6 rounded-xl transition-all duration-500 flex items-center justify-center gap-3 mt-6 select-none relative overflow-hidden bg-gradient-to-r from-teal-600 via-teal-500 to-teal-600 bg-[length:200%_auto] hover:bg-right text-white shadow-xl shadow-teal-900/20 hover:shadow-teal-500/30 border border-teal-500/30 hover:border-teal-400/50 hover:-translate-y-0.5`}
           >
             {!authError && (
               <div className="absolute inset-0 w-full h-full">
                 <div className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-[150%] group-hover:translate-x-[250%] transition-transform duration-1000 ease-in-out"></div>
               </div>
             )}
-            <Shield className={`w-4 h-4 relative z-10 ${authError ? 'text-slate-500' : 'text-teal-100 group-hover:text-white transition-colors duration-300'}`} />
+            <Shield className={`w-4 h-4 relative z-10 text-teal-100 group-hover:text-white transition-colors duration-300`} />
             <span className="relative z-10 text-teal-50 group-hover:text-white transition-colors duration-300">
-              {authError ? 'Erro de Conexão' : t.accessButton}
+              {t.accessButton}
             </span>
             <ChevronRight className="w-4 h-4 relative z-10 text-teal-300/70 group-hover:text-white group-hover:translate-x-1 transition-all duration-300" />
           </button>
