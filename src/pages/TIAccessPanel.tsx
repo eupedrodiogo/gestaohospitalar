@@ -83,12 +83,34 @@ export default function TIAccessPanel() {
       if (authError) throw new Error("Erro ao criar credenciais: " + authError.message);
       if (!authData.user) throw new Error("Usuário não retornado.");
 
+      // Determinar o role correto baseado no setor escolhido para garantir que o usuário acesse o painel correto
+      const roleMap: Record<string, string> = {
+        "Recursos Humanos": "rh",
+        "Segurança e TI": "ti",
+        "Hub de Ideias": "inovacao",
+        "Apoio Diagnóstico": "sadt",
+        "Exp. do Cliente": "atendimento",
+        "Gestão Financeira": "financeiro",
+        "Faturamento & Glosas": "faturamento",
+        "Custos e Controladoria": "custos",
+        "Comercial": "comercial",
+        "Marketing & Brand": "marketing",
+        "Segurança do Trabalho": "seguranca",
+        "Medicina do Trabalho": "sesmt",
+        "Jurídico e Compliance": "juridico",
+        "Diretoria Administrativa": "diretor_administrativo",
+        "Diretoria Geral": "diretor_geral",
+        "Suprimentos e Logística": "suprimentos"
+      };
+      
+      const assignedRole = roleMap[newDepartment] || newRole;
+
       // 2. Inserir o perfil na tabela user_profiles (Permitido pelo RLS porque o usuário logado é 'ti')
       const { error: dbError } = await supabase.from('user_profiles').insert([{
         userId: authData.user.id,
         name: newName,
         email: corporativeEmail,
-        role: newRole,
+        role: assignedRole,
         department: newDepartment,
         language: 'pt'
       }]);
@@ -252,14 +274,24 @@ export default function TIAccessPanel() {
                   <label className="block text-xs font-bold text-slate-400 mb-1">Setor (Departamento)</label>
                   <select value={newDepartment} onChange={e => setNewDepartment(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none">
-                    <option value="Geral">Geral</option>
                     <option value="Almoxarifado">Almoxarifado</option>
-                    <option value="Enfermagem">Enfermagem</option>
-                    <option value="Farmácia">Farmácia</option>
-                    <option value="Gestão">Gestão</option>
-                    <option value="Medicina">Medicina</option>
-                    <option value="RH">Recursos Humanos (RH)</option>
-                    <option value="TI">Tecnologia da Informação (TI)</option>
+                    <option value="Recursos Humanos">Recursos Humanos (RH)</option>
+                    <option value="Segurança e TI">Segurança e TI</option>
+                    <option value="Hub de Ideias">Inovação / Hub de Ideias</option>
+                    <option value="Apoio Diagnóstico">SADT / Apoio Diagnóstico</option>
+                    <option value="Exp. do Cliente">Atendimento / Exp. do Cliente</option>
+                    <option value="Gestão Financeira">Gestão Financeira & DRE</option>
+                    <option value="Faturamento & Glosas">Faturamento & Glosas</option>
+                    <option value="Custos e Controladoria">Custos e Controladoria</option>
+                    <option value="Comercial">Comercial / Relac. e Vendas</option>
+                    <option value="Marketing & Brand">Marketing & Brand</option>
+                    <option value="Segurança do Trabalho">Segurança do Trabalho (Riscos Amb.)</option>
+                    <option value="Medicina do Trabalho">Medicina do Trabalho (SESMT)</option>
+                    <option value="Jurídico e Compliance">Jurídico e Compliance</option>
+                    <option value="Diretoria Administrativa">Diretoria Administrativa</option>
+                    <option value="Diretoria Geral">Diretoria Geral</option>
+                    <option value="Suprimentos e Logística">Suprimentos e Logística</option>
+                    <option value="Geral">Geral (Outros)</option>
                   </select>
                 </div>
 

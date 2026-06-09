@@ -177,20 +177,31 @@ export default function LoginScreen({
               Acesso Rápido de Teste
             </div>
             {[
-              { id: 'apresentador', label: 'Apresentador', name: 'Pedro Diogo (Apresentador)', email: 'pedrodiogo.mello@gmail.com' },
-              { id: 'colaborador', label: 'Colab / Base', name: 'Pedro (Auxiliar)', email: 'pedro@saofrancisco.com.br' },
-              { id: 'medico', label: 'Médico (PJ/CLT)', name: 'Dr. Marcos (Plantonista)', email: 'marcos@saofrancisco.com.br' },
-              { id: 'lider', label: 'Líder', name: 'Rafael (Coordenador)', email: 'rafael@saofrancisco.com.br' },
-              { id: 'rh', label: 'RH', name: 'Márcia (RH)', email: 'marcia@saofrancisco.com.br' },
-              { id: 'ti', label: 'TI', name: 'João (TI)', email: 'joao@saofrancisco.com.br' },
-              { id: 'sesmt', label: 'Medicina', name: 'Dr. Lucas (Med. Trab)', email: 'lucas@saofrancisco.com.br' }
+              { id: 'colaborador', label: 'Pedro (Almox.)', username: 'pedro' },
+              { id: 'lider', label: 'Rafael (Coord.)', username: 'rafael' },
+              { id: 'rh', label: 'Márcia (RH)', username: 'marcia' },
+              { id: 'ti', label: 'João (TI)', username: 'joao' },
+              { id: 'inovacao', label: 'Inovação', username: 'inovacao' },
+              { id: 'sadt', label: 'Daniela (SADT)', username: 'daniela' },
+              { id: 'atendimento', label: 'Andréa (Atend.)', username: 'andrea' },
+              { id: 'financeiro', label: 'Johnny (Financ.)', username: 'johnny' },
+              { id: 'faturamento', label: 'Luis (Fatur.)', username: 'luis' },
+              { id: 'custos', label: 'Victor (Custos)', username: 'victor' },
+              { id: 'comercial', label: 'Ingrid (Comerc.)', username: 'ingrid' },
+              { id: 'marketing', label: 'Bruno (Mkt)', username: 'bruno' },
+              { id: 'seguranca', label: 'Samuel (Seg. Trab.)', username: 'samuel' },
+              { id: 'sesmt', label: 'Dr. Lucas (Med. Trab.)', username: 'lucas' },
+              { id: 'juridico', label: 'Dr. Alexandre (Comp.)', username: 'alexandre' },
+              { id: 'diretor_administrativo', label: 'Jociliano (Dir. Adm.)', username: 'jociliano' },
+              { id: 'diretor_geral', label: 'Carlos (Geral)', username: 'carlos' },
+              { id: 'suprimentos', label: 'Luiza (Suprim.)', username: 'luiza' },
+              { id: 'apresentador', label: 'Pedro (Apresentador)', username: 'pedrodiogo' }
             ].map((role, idx) => (
               <button
                 key={`${role.id}-${idx}`}
                 type="button"
                 onClick={() => {
-                  const demoUsername = role.email.split('@')[0];
-                  setUsername(demoUsername);
+                  setUsername(role.username);
                   setPassword('senha123'); // senha padrão que a TI deve cadastrar
                 }}
                 className="flex-1 min-w-[70px] bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-300 font-bold text-[10px] uppercase py-2 px-2 rounded-lg transition-colors cursor-pointer"
