@@ -19,6 +19,7 @@ export default function TIAccessPanel() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   
   // Form para novo usuário
   const [newName, setNewName] = useState('');
@@ -91,13 +92,17 @@ export default function TIAccessPanel() {
       if (dbError) throw new Error("Erro ao salvar perfil no banco de dados: " + dbError.message);
 
       // Sucesso
-      setIsModalOpen(false);
-      setNewName('');
-      setNewUsername('');
-      setNewPassword('');
-      setNewRole('colaborador');
+      setIsSuccess(true);
       fetchUsers();
-      alert("Usuário criado com sucesso!");
+      
+      setTimeout(() => {
+        setIsSuccess(false);
+        setIsModalOpen(false);
+        setNewName('');
+        setNewUsername('');
+        setNewPassword('');
+        setNewRole('colaborador');
+      }, 2500);
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || "Ocorreu um erro desconhecido.");
@@ -190,52 +195,64 @@ export default function TIAccessPanel() {
               </button>
             </div>
             
-            <form onSubmit={handleCreateUser} className="p-5 space-y-4">
-              {errorMsg && (
-                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
-                  {errorMsg}
+            {isSuccess ? (
+              <div className="p-10 flex flex-col items-center justify-center space-y-4 animate-in zoom-in fade-in duration-500">
+                <div className="w-20 h-20 bg-teal-500/10 rounded-full flex items-center justify-center mb-2 border border-teal-500/20 shadow-[0_0_30px_rgba(20,184,166,0.15)]">
+                  <Check className="w-10 h-10 text-teal-400" />
                 </div>
-              )}
-              <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1">Nome Completo</label>
-                <input required type="text" value={newName} onChange={e => setNewName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none" />
+                <h3 className="text-xl font-display font-bold text-slate-100">Usuário Criado!</h3>
+                <p className="text-sm text-slate-400 text-center leading-relaxed">
+                  O acesso de <strong className="text-slate-300">{newName}</strong> foi configurado com sucesso e já está disponível no sistema.
+                </p>
               </div>
-              
-              <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1">Usuário de Acesso</label>
-                <input required type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none" placeholder="ex: pdsmello" />
-              </div>
+            ) : (
+              <form onSubmit={handleCreateUser} className="p-5 space-y-4">
+                {errorMsg && (
+                  <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+                    {errorMsg}
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">Nome Completo</label>
+                  <input required type="text" value={newName} onChange={e => setNewName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none" />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">Usuário de Acesso</label>
+                  <input required type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none" placeholder="ex: pdsmello" />
+                </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1">Senha Provisória</label>
-                <input required type="text" value={newPassword} onChange={e => setNewPassword(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none" />
-              </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">Senha Provisória</label>
+                  <input required type="text" value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none" />
+                </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1">Perfil (Role)</label>
-                <select value={newRole} onChange={e => setNewRole(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none">
-                  <option value="colaborador">Colaborador</option>
-                  <option value="lider">Líder / Coordenador</option>
-                  <option value="rh">RH</option>
-                  <option value="ti">TI</option>
-                </select>
-              </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">Perfil (Role)</label>
+                  <select value={newRole} onChange={e => setNewRole(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none">
+                    <option value="colaborador">Colaborador</option>
+                    <option value="lider">Líder / Coordenador</option>
+                    <option value="rh">RH</option>
+                    <option value="ti">TI</option>
+                  </select>
+                </div>
 
-              <div className="pt-4 flex gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)}
-                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 rounded-xl text-sm font-bold transition-all">
-                  Cancelar
-                </button>
-                <button type="submit" disabled={isCreating}
-                  className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50 flex justify-center items-center gap-2">
-                  {isCreating ? 'Criando...' : <><Check className="w-4 h-4"/> Salvar</>}
-                </button>
-              </div>
-            </form>
+                <div className="pt-4 flex gap-3">
+                  <button type="button" onClick={() => setIsModalOpen(false)}
+                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 rounded-xl text-sm font-bold transition-all">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={isCreating}
+                    className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50 flex justify-center items-center gap-2">
+                    {isCreating ? 'Criando...' : <><Check className="w-4 h-4"/> Salvar</>}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
