@@ -5,6 +5,7 @@ export interface UserProfile {
   email: string;
   name: string;
   role: 'colaborador' | 'lider' | 'rh' | 'ti' | 'inovacao' | 'sadt' | 'atendimento' | 'financeiro' | 'custos' | 'faturamento' | 'comercial' | 'marketing' | 'seguranca' | 'diretor_administrativo' | 'diretor_geral' | 'medico' | 'apresentador';
+  department?: string;
   language: Language;
   createdAt: number;
 }

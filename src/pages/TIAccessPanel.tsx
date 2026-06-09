@@ -8,6 +8,7 @@ type UserProfileData = {
   name: string;
   username: string;
   role: string;
+  department: string;
   status: string;
   lastLogin: string;
 };
@@ -26,6 +27,7 @@ export default function TIAccessPanel() {
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('colaborador');
+  const [newDepartment, setNewDepartment] = useState('Geral');
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -40,6 +42,7 @@ export default function TIAccessPanel() {
         name: u.name,
         username: u.email.replace('@hsf.local', ''),
         role: u.role,
+        department: u.department || 'Geral',
         status: 'Ativo',
         lastLogin: new Date(u.createdAt).toLocaleDateString('pt-BR')
       })));
@@ -86,6 +89,7 @@ export default function TIAccessPanel() {
         name: newName,
         email: corporativeEmail,
         role: newRole,
+        department: newDepartment,
         language: 'pt'
       }]);
 
@@ -102,6 +106,7 @@ export default function TIAccessPanel() {
         setNewUsername('');
         setNewPassword('');
         setNewRole('colaborador');
+        setNewDepartment('Geral');
       }, 2500);
     } catch (err: any) {
       console.error(err);
@@ -147,6 +152,7 @@ export default function TIAccessPanel() {
               <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
                 <th className="pb-3 font-medium">Nome</th>
                 <th className="pb-3 font-medium">Usuário</th>
+                <th className="pb-3 font-medium">Setor</th>
                 <th className="pb-3 font-medium">Perfil</th>
                 <th className="pb-3 font-medium">Status</th>
                 <th className="pb-3 font-medium text-right">Ações</th>
@@ -162,6 +168,7 @@ export default function TIAccessPanel() {
                   <tr key={user.userId} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
                     <td className="py-4 text-slate-200 font-medium">{user.name}</td>
                     <td className="py-4 text-slate-400">{user.username}</td>
+                    <td className="py-4 text-slate-400">{user.department}</td>
                     <td className="py-4 text-slate-400 capitalize">{user.role}</td>
                     <td className="py-4">
                       <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-400 border border-teal-500/20">
@@ -238,6 +245,21 @@ export default function TIAccessPanel() {
                     <option value="lider">Líder / Coordenador</option>
                     <option value="rh">RH</option>
                     <option value="ti">TI</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">Setor (Departamento)</label>
+                  <select value={newDepartment} onChange={e => setNewDepartment(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-teal-500 outline-none">
+                    <option value="Geral">Geral</option>
+                    <option value="Almoxarifado">Almoxarifado</option>
+                    <option value="Enfermagem">Enfermagem</option>
+                    <option value="Farmácia">Farmácia</option>
+                    <option value="Gestão">Gestão</option>
+                    <option value="Medicina">Medicina</option>
+                    <option value="RH">Recursos Humanos (RH)</option>
+                    <option value="TI">Tecnologia da Informação (TI)</option>
                   </select>
                 </div>
 

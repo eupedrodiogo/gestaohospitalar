@@ -189,15 +189,9 @@ export default function LoginScreen({
                 key={`${role.id}-${idx}`}
                 type="button"
                 onClick={() => {
-                  if (onActivateOfflineMode) {
-                    onActivateOfflineMode(
-                      role.name,
-                      role.email,
-                      role.id as any
-                    );
-                  } else {
-                    onLoginSuccess(role.email);
-                  }
+                  const demoUsername = role.email.split('@')[0];
+                  setUsername(demoUsername);
+                  setPassword('senha123'); // senha padrão que a TI deve cadastrar
                 }}
                 className="flex-1 min-w-[70px] bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-300 font-bold text-[10px] uppercase py-2 px-2 rounded-lg transition-colors cursor-pointer"
               >
