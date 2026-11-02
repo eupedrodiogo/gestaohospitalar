@@ -1184,7 +1184,12 @@ export default function App() {
       });
 
       if (error) {
-        setAuthError("Acesso Restrito: Usuário ou senha incorretos.");
+        // Só é credencial inválida quando o Auth responde 400; status 0/5xx = servidor fora do ar
+        if (error.status === 400 || error.code === "invalid_credentials") {
+          setAuthError("Acesso Restrito: Usuário ou senha incorretos.");
+        } else {
+          setAuthError("Servidor de autenticação indisponível no momento. Tente novamente em alguns minutos.");
+        }
         return;
       }
 
