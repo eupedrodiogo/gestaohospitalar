@@ -201,7 +201,20 @@ service cloud.firestore {
                               resource.data.authorId == request.auth.uid ||
                               (hasUserRoleDocument() && getUserRole() in ["rh", "lider", "ti", "diretor_administrativo", "diretor_geral"])
                             );
+    // Rules for Marketing Message Dispatches
+    match /dispatches/{dispatchId} {
+      allow read: if isSignedIn()
+                  && hasUserRoleDocument()
+                  && getUserRole() in ["marketing", "ti", "diretor_geral"];
+
+      allow create: if isSignedIn()
+                    && hasUserRoleDocument()
+                    && getUserRole() == "marketing"
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.content is string
+                    && request.resource.data.content.size() <= 5000;
+                    
+      allow update, delete: if false; // Only cloud functions should update status, or maybe marketing can delete pending?
     }
   }
 }
-

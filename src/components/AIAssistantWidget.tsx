@@ -18,6 +18,120 @@ export default function AIAssistantWidget({ userName, userRole }: { userName: st
   const [isDragging, setIsDragging] = useState(false);
   const startXRef = useRef<number | null>(null);
 
+  // Floating btn states
+  const btnRef = useRef<HTMLDivElement>(null);
+  const [isCustomPos, setIsCustomPos] = useState(false);
+  const [btnPos, setBtnPos] = useState({ x: 0, y: 0 });
+  const [btnScale, setBtnScale] = useState(1);
+  const [btnOpacity, setBtnOpacity] = useState(1);
+  const [isDraggingBtn, setIsDraggingBtn] = useState(false);
+  const dragStartBtn = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
+  const dragged = useRef(false);
+
+  // Config Mode States
+  const [isConfigMode, setIsConfigMode] = useState(false);
+  const [isPressing, setIsPressing] = useState(false);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const longPressStartPos = useRef({ x: 0, y: 0 });
+
+  const startLongPress = (clientX: number, clientY: number) => {
+    if (isConfigMode) return;
+    setIsPressing(true);
+    longPressStartPos.current = { x: clientX, y: clientY };
+    longPressTimer.current = setTimeout(() => {
+      setIsConfigMode(true);
+      setIsPressing(false);
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 500);
+  };
+
+  const clearLongPress = () => {
+    setIsPressing(false);
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleBtnDown = (e: React.MouseEvent | React.TouchEvent) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    if (!isConfigMode) {
+      startLongPress(clientX, clientY);
+      return;
+    }
+    
+    setIsDraggingBtn(true);
+    dragged.current = false;
+    if (!isCustomPos && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setBtnPos({ x: rect.left, y: rect.top });
+      setIsCustomPos(true);
+      dragStartBtn.current = { x: clientX, y: clientY, posX: rect.left, posY: rect.top };
+    } else {
+      dragStartBtn.current = { x: clientX, y: clientY, posX: btnPos.x, posY: btnPos.y };
+    }
+  };
+
+  useEffect(() => {
+    if (!isDraggingBtn && !isPressing) return;
+
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+
+      if (isPressing) {
+        const deltaX = clientX - longPressStartPos.current.x;
+        const deltaY = clientY - longPressStartPos.current.y;
+        if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+          clearLongPress();
+        }
+      }
+
+      if (!isDraggingBtn || !isConfigMode) return;
+      e.preventDefault(); // prevent scrolling while dragging
+      
+      const deltaX = clientX - dragStartBtn.current.x;
+      const deltaY = clientY - dragStartBtn.current.y;
+      if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+        dragged.current = true;
+      }
+      setBtnPos({
+        x: Math.min(Math.max(0, dragStartBtn.current.posX + deltaX), window.innerWidth - 60),
+        y: Math.min(Math.max(0, dragStartBtn.current.posY + deltaY), window.innerHeight - 60)
+      });
+    };
+
+    const handleUp = () => {
+      clearLongPress();
+      setIsDraggingBtn(false);
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleUp);
+    };
+  }, [isDraggingBtn, isPressing, isConfigMode]);
+
+  const handleBtnClick = () => {
+    clearLongPress();
+    if (isConfigMode || dragged.current) {
+      dragged.current = false;
+      return;
+    }
+    setIsOpen(true);
+  };
+
+
+
   const suggestions = userRole === 'lider' ? [
     "Analisar PDI da minha equipe",
     "Sugerir metas para liderança"
@@ -91,14 +205,32 @@ export default function AIAssistantWidget({ userName, userRole }: { userName: st
   return (
     <>
       {!isOpen && !isDocked && (
-        <div id="tour-ai-widget-floating" className="fixed bottom-24 md:bottom-6 right-6 z-40 group flex items-center justify-center transition-all duration-500 hover:scale-105">
+        <div 
+          id="tour-ai-widget-floating" 
+          ref={btnRef}
+          onMouseDown={handleBtnDown}
+          onTouchStart={handleBtnDown}
+          onMouseUp={clearLongPress}
+          onTouchEnd={clearLongPress}
+          onMouseLeave={clearLongPress}
+          style={{
+            ...(isCustomPos ? { left: btnPos.x, top: btnPos.y } : {}),
+            transform: `scale(${btnScale}) ${!isCustomPos ? 'translateY(var(--tw-translate-y, 0))' : ''}`,
+            opacity: btnOpacity
+          }}
+          className={`fixed z-40 group flex items-center justify-center transition-all ${
+            isDraggingBtn ? 'duration-0 cursor-grabbing' : 'duration-500 cursor-pointer hover:scale-[1.05]'
+          } ${!isCustomPos ? 'top-[65%] md:top-auto md:bottom-6 right-0 md:right-6 -translate-y-1/2 md:translate-y-0' : ''} ${
+            isConfigMode ? 'ring-4 ring-dashed ring-teal-400 ring-offset-4 ring-offset-slate-900 rounded-l-full md:rounded-full' : ''
+          }`}
+        >
           {/* Animated Glow Behind */}
-          <div className="absolute inset-0 bg-teal-500/20 rounded-full blur-xl group-hover:bg-teal-400/40 transition-all duration-500"></div>
+          <div className="absolute inset-0 bg-teal-500/20 rounded-l-full md:rounded-full blur-xl group-hover:bg-teal-400/40 transition-all duration-500 pointer-events-none"></div>
           
           {/* Main Button */}
           <button
-            onClick={() => setIsOpen(true)}
-            className="relative flex items-center justify-center w-14 h-14 bg-gradient-to-b from-slate-800 to-slate-950 rounded-full border border-slate-700/80 shadow-[0_8px_30px_rgba(0,0,0,0.5)] overflow-hidden"
+            onClick={handleBtnClick}
+            className="relative flex items-center justify-center w-12 h-14 md:w-14 md:h-14 bg-gradient-to-b from-slate-800 to-slate-950 rounded-l-xl md:rounded-full border border-r-0 md:border-r border-slate-700/80 shadow-[-4px_4px_20px_rgba(0,0,0,0.5)] md:shadow-[0_8px_30px_rgba(0,0,0,0.5)] overflow-hidden"
             title="Assistente de IA HSF"
           >
             {/* Glass Overlay */}
@@ -106,20 +238,74 @@ export default function AIAssistantWidget({ userName, userRole }: { userName: st
             
             <BrainCircuit className="w-6 h-6 text-teal-400 group-hover:text-teal-300 transition-colors drop-shadow-[0_0_8px_rgba(45,212,191,0.5)] group-hover:animate-pulse" />
             
-            <Sparkles className="absolute top-3 right-3 w-3 h-3 text-teal-300 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <Sparkles className="absolute top-3 right-1.5 md:right-3 w-3 h-3 text-teal-300 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </button>
 
           {/* Dock / Dismiss Button */}
           <button 
             onClick={(e) => { e.stopPropagation(); setIsDocked(true); }}
-            className="absolute -top-1 -left-1 w-5 h-5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-full flex items-center justify-center text-slate-400 hover:text-white transition-colors z-50 shadow-lg cursor-pointer"
+            className="hidden md:flex absolute -top-1 -left-1 w-5 h-5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-full items-center justify-center text-slate-400 hover:text-white transition-colors z-50 shadow-lg cursor-pointer"
             title="Ocultar na lateral"
           >
             <X className="w-3 h-3" />
           </button>
 
           {/* Notification Badge */}
-          <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-slate-900 shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse"></span>
+          {!isConfigMode && (
+            <span className="absolute top-0 right-1 md:right-0 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-slate-900 shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse"></span>
+          )}
+        </div>
+      )}
+
+      {/* Config Menu Overlay */}
+      {isConfigMode && !isOpen && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 border border-teal-500/30 p-4 rounded-2xl shadow-2xl z-50 flex flex-col gap-4 w-[90%] max-w-[320px] animate-in slide-in-from-bottom-4">
+          <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+            <div className="flex items-center gap-2 text-teal-400">
+              <Sparkles className="w-4 h-4" />
+              <span className="text-sm font-semibold">Configurar Assistente</span>
+            </div>
+            <button onClick={() => setIsConfigMode(false)} className="text-slate-400 hover:text-white bg-slate-800 p-1.5 rounded-full transition-colors">
+              <X className="w-4 h-4"/>
+            </button>
+          </div>
+          
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-center text-xs">
+              <label className="text-slate-300 font-medium">Tamanho do Botão</label>
+              <span className="text-teal-400 font-mono">{(btnScale * 100).toFixed(0)}%</span>
+            </div>
+            <input 
+              type="range" min="0.5" max="2" step="0.1" 
+              value={btnScale} 
+              onChange={(e) => setBtnScale(parseFloat(e.target.value))}
+              className="w-full accent-teal-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-center text-xs">
+              <label className="text-slate-300 font-medium">Opacidade (Visibilidade)</label>
+              <span className="text-teal-400 font-mono">{(btnOpacity * 100).toFixed(0)}%</span>
+            </div>
+            <input 
+              type="range" min="0.2" max="1" step="0.1" 
+              value={btnOpacity} 
+              onChange={(e) => setBtnOpacity(parseFloat(e.target.value))}
+              className="w-full accent-teal-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+
+          <div className="text-[11.5px] text-slate-300 bg-slate-800/80 border border-slate-700 p-3 rounded-xl flex items-center justify-center text-center shadow-inner mt-1">
+            Você pode arrastar o botão flutuante agora para reposicioná-lo livremente pela tela.
+          </div>
+
+          <button 
+            onClick={() => setIsConfigMode(false)}
+            className="w-full py-2.5 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold rounded-xl transition-colors shadow-md mt-1"
+          >
+            Concluir Edição
+          </button>
         </div>
       )}
 

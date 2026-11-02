@@ -1,27 +1,24 @@
-const CACHE_NAME = 'gentegestao-cache-v1';
+import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
+import { clientsClaim } from 'workbox-core';
 
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
-});
+// Limpa caches antigos e ativa imediatamente o novo SW
+cleanupOutdatedCaches();
+self.skipWaiting();
+clientsClaim();
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
-});
+// Pre-cache os recursos compilados pelo Vite
+precacheAndRoute(self.__WB_MANIFEST || []);
 
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
-  );
-});
-
+// --- Lógica de Push Notifications Mantida ---
 self.addEventListener('push', (event) => {
   let title = 'GenteGestão RH';
   let options = {
     body: 'Você tem uma nova notificação.',
-    icon: '/icon.png',
-    badge: '/icon.png'
+    icon: '/icon-192x192.png',
+    badge: '/icon-192x192.png',
+    vibrate: [200, 100, 200, 100, 200, 100, 200],
+    requireInteraction: true,
+    silent: false
   };
 
   if (event.data) {

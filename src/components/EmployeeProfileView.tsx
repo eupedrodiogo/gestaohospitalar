@@ -3,16 +3,17 @@ import {
   ArrowLeft, User, Shield, Briefcase, Award, 
   MessageSquare, ClipboardList, TrendingUp, CheckCircle2, History, Target 
 } from "lucide-react";
-import { Pdi, Checkin } from "../types";
+import { Pdi, Checkin, UserProfile, Badge } from "../types";
 
 interface EmployeeProfileViewProps {
   employeePdi: Pdi;
   onBack: () => void;
   assessmentInfo: { score: string; label: string; source?: 'leader' | 'self' } | null;
   checkins?: Checkin[];
+  userProfile?: UserProfile;
 }
 
-export default function EmployeeProfileView({ employeePdi, onBack, assessmentInfo, checkins = [] }: EmployeeProfileViewProps) {
+export default function EmployeeProfileView({ employeePdi, onBack, assessmentInfo, checkins = [], userProfile }: EmployeeProfileViewProps) {
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [competenciesAvg, setCompetenciesAvg] = useState<Record<string, number>>({});
 
@@ -127,6 +128,37 @@ export default function EmployeeProfileView({ employeePdi, onBack, assessmentInf
            </div>
         </div>
       </div>
+
+      {/* Selos e Conquistas Section */}
+      {(userProfile?.badges && userProfile.badges.length > 0) && (
+        <div className="bg-slate-900/50 border border-teal-500/20 rounded-3xl p-6 shadow-xl relative overflow-hidden w-full glow-border">
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-teal-500/10 blur-3xl rounded-full"></div>
+          <div className="flex items-center gap-3 mb-6 relative z-10">
+            <div className="w-10 h-10 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400">
+              <Award className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-xl font-display font-bold text-slate-100">Selos e Conquistas</h3>
+              <p className="text-xs text-slate-400">Reconhecimentos institucionais do colaborador.</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
+            {userProfile.badges.map(badge => (
+              <div key={badge.id} className="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex flex-col items-center justify-center text-center gap-3 hover:border-teal-500/50 hover:bg-slate-900 transition-all group">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-teal-500/20 to-slate-800 flex items-center justify-center text-teal-400 group-hover:scale-110 transition-transform shadow-inner shadow-teal-500/10">
+                  <span className="text-2xl">{badge.icon}</span>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-200">{badge.name}</h4>
+                  <p className="text-[10px] text-slate-500 mt-1">{badge.description}</p>
+                </div>
+                <span className="text-[9px] font-medium text-teal-500/70">{new Date(badge.earnedAt).toLocaleDateString('pt-BR')}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
         

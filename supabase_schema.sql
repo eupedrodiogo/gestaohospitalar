@@ -14,7 +14,8 @@ CREATE TABLE public.user_profiles (
   name TEXT,
   role TEXT,
   language TEXT,
-  "createdAt" BIGINT DEFAULT (extract(epoch from now()) * 1000)
+  "createdAt" BIGINT DEFAULT (extract(epoch from now()) * 1000),
+  "badges" JSONB DEFAULT '[]'::jsonb
 );
 
 -- 3. Recriar Tabela de PDIs (com todos os campos reais do frontend)
@@ -155,3 +156,120 @@ CREATE POLICY update_notifications ON public.notifications
 CREATE POLICY delete_notifications ON public.notifications 
   FOR DELETE TO authenticated 
   USING ("userId" = auth.uid() OR public.get_my_role() IN ('ti', 'rh', 'lider'));
+
+-- 13. Tabela de Enquetes Rápidas
+CREATE TABLE public.polls (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  question TEXT NOT NULL,
+  options JSONB NOT NULL,
+  active BOOLEAN DEFAULT TRUE,
+  "createdBy" UUID REFERENCES public.user_profiles("userId"),
+  "createdAt" BIGINT DEFAULT (extract(epoch from now()) * 1000)
+);
+
+-- 14. Tabela de Participantes da Enquete (Para impedir voto duplo mantendo anonimato)
+CREATE TABLE public.poll_participants (
+  "pollId" UUID REFERENCES public.polls(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  "userId" UUID REFERENCES public.user_profiles("userId") ON UPDATE CASCADE ON DELETE CASCADE,
+  "createdAt" BIGINT DEFAULT (extract(epoch from now()) * 1000),
+  PRIMARY KEY ("pollId", "userId")
+);
+
+-- 15. Tabela de Votos da Enquete (100% Anônimo, sem identificador de usuário)
+CREATE TABLE public.poll_votes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "pollId" UUID REFERENCES public.polls(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  "optionIndex" INT NOT NULL,
+  "createdAt" BIGINT DEFAULT (extract(epoch from now()) * 1000)
+);
+
+-- Habilitar publicação Realtime para enquetes e votos
+alter publication supabase_realtime add table public.polls;
+alter publication supabase_realtime add table public.poll_votes;
+
+-- Ativar RLS
+ALTER TABLE public.polls ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.poll_participants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.poll_votes ENABLE ROW LEVEL SECURITY;
+
+-- Políticas de Segurança para POLLS
+CREATE POLICY select_polls ON public.polls 
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY insert_polls ON public.polls 
+  FOR INSERT TO authenticated 
+  WITH CHECK (public.get_my_role() IN ('rh', 'ti'));
+
+CREATE POLICY update_polls ON public.polls 
+  FOR UPDATE TO authenticated 
+  USING (public.get_my_role() IN ('rh', 'ti'))
+  WITH CHECK (public.get_my_role() IN ('rh', 'ti'));
+
+CREATE POLICY delete_polls ON public.polls 
+  FOR DELETE TO authenticated 
+  USING (public.get_my_role() IN ('rh', 'ti'));
+
+-- Políticas de Segurança para POLL_PARTICIPANTS
+CREATE POLICY select_poll_participants ON public.poll_participants 
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY insert_poll_participants ON public.poll_participants 
+  FOR INSERT TO authenticated 
+  WITH CHECK ("userId" = auth.uid());
+
+CREATE POLICY update_poll_participants ON public.poll_participants 
+  FOR UPDATE TO authenticated USING (false);
+
+CREATE POLICY delete_poll_participants ON public.poll_participants 
+  FOR DELETE TO authenticated USING (false);
+
+-- Políticas de Segurança para POLL_VOTES
+CREATE POLICY select_poll_votes ON public.poll_votes 
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY insert_poll_votes ON public.poll_votes 
+  FOR INSERT TO authenticated WITH CHECK (true);
+
+CREATE POLICY update_poll_votes ON public.poll_votes 
+  FOR UPDATE TO authenticated USING (false);
+
+CREATE POLICY delete_poll_votes ON public.poll_votes 
+  FOR DELETE TO authenticated USING (false);
+
+-- 16. Tabela de Disparos de Marketing (Dispatches)
+CREATE TABLE public.dispatches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "authorId" UUID REFERENCES public.user_profiles("userId"),
+  "authorName" TEXT,
+  "authorRole" TEXT,
+  audience TEXT NOT NULL,
+  channels JSONB NOT NULL,
+  subject TEXT,
+  content TEXT NOT NULL,
+  status TEXT DEFAULT 'pending',
+  "createdAt" BIGINT DEFAULT (extract(epoch from now()) * 1000)
+);
+
+-- Habilitar publicação Realtime para dispatches
+alter publication supabase_realtime add table public.dispatches;
+
+-- Ativar RLS para dispatches
+ALTER TABLE public.dispatches ENABLE ROW LEVEL SECURITY;
+
+-- Políticas de Segurança para DISPATCHES
+CREATE POLICY select_dispatches ON public.dispatches 
+  FOR SELECT TO authenticated 
+  USING (public.get_my_role() IN ('marketing', 'ti', 'diretor_geral'));
+
+CREATE POLICY insert_dispatches ON public.dispatches 
+  FOR INSERT TO authenticated 
+  WITH CHECK (public.get_my_role() = 'marketing');
+
+CREATE POLICY update_dispatches ON public.dispatches 
+  FOR UPDATE TO authenticated 
+  USING (false) -- Somente Cloud Functions via API (Service Role) devem atualizar o status
+  WITH CHECK (false);
+
+CREATE POLICY delete_dispatches ON public.dispatches 
+  FOR DELETE TO authenticated 
+  USING (false);

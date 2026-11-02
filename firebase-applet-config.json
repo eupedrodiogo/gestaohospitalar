@@ -1,10 +1,10 @@
 {
-  "projectId": "remixed-project-id",
-  "appId": "remixed-app-id",
-  "apiKey": "remixed-api-key",
-  "authDomain": "remixed-auth-domain",
-  "firestoreDatabaseId": "remixed-firestore-database-id",
-  "storageBucket": "remixed-storage-bucket",
-  "messagingSenderId": "remixed-messaging-sender-id",
-  "measurementId": "remixed-measurement-id"
+  "projectId": "engenharia-clinica-hsf-app",
+  "appId": "1:465932966252:web:6f158b9ab2ec5d058bbb49",
+  "apiKey": "AIzaSyD4XQI6hYi1ZfSHL-xMH6tAu8v0_kEWY5o",
+  "authDomain": "engenharia-clinica-hsf-app.firebaseapp.com",
+  "firestoreDatabaseId": "gestaohospitalar",
+  "storageBucket": "engenharia-clinica-hsf-app.firebasestorage.app",
+  "messagingSenderId": "465932966252",
+  "measurementId": ""
 }

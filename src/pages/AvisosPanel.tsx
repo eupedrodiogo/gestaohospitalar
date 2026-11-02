@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
 import {
   Megaphone,
   Trash2,
@@ -147,65 +148,93 @@ export default function AvisosPanel({ userRole, userName, userId }: AvisosPanelP
 
   const canPostNotices = ["rh", "lider", "ti", "diretor_administrativo", "diretor_geral"].includes(userRole);
 
-  useEffect(() => {
+  const fetchAvisos = async () => {
     try {
-      const localStored = localStorage.getItem("hospital_avisos");
-      if (localStored) {
-        setAvisos(JSON.parse(localStored));
-      } else {
-        setAvisos(DEMO_AVISOS);
-        localStorage.setItem("hospital_avisos", JSON.stringify(DEMO_AVISOS));
-      }
+      const { data: noticesData, error } = await supabase
+        .from("notices")
+        .select(`
+          *,
+          notice_likes(user_id),
+          notice_reads(user_id)
+        `)
+        .order("createdAt", { ascending: false });
 
-      const localComm = localStorage.getItem("hospital_avisos_comments");
-      if (localComm) {
-        setCommentsMap(JSON.parse(localComm));
-      } else {
-        setCommentsMap(DEMO_COMMENTS);
-        localStorage.setItem("hospital_avisos_comments", JSON.stringify(DEMO_COMMENTS));
+      if (error) throw error;
+
+      if (noticesData) {
+        const mappedAvisos: Aviso[] = noticesData.map((n: any) => ({
+          ...n,
+          likes: n.notice_likes ? n.notice_likes.map((l: any) => l.user_id) : [],
+          readBy: n.notice_reads ? n.notice_reads.map((r: any) => r.user_id) : []
+        }));
+        setAvisos(mappedAvisos);
       }
-    } catch (error) {
-      console.warn("Storage warning: ", error);
+    } catch (err) {
+      console.error("Erro ao buscar avisos", err);
     }
+  };
+
+  useEffect(() => {
+    fetchAvisos();
+    
+    const noticesSub = supabase.channel('notices_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notices' }, fetchAvisos)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notice_likes' }, fetchAvisos)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notice_reads' }, fetchAvisos)
+      .subscribe();
+      
+    return () => { supabase.removeChannel(noticesSub); };
   }, []);
 
-  // Fetch comments for active aviso
+  const fetchComments = async (avisoId: string) => {
+    const { data, error } = await supabase
+      .from("notice_comments")
+      .select("*")
+      .eq("notice_id", avisoId)
+      .order("createdAt", { ascending: true });
+      
+    if (data) {
+      setCommentsMap(prev => ({ ...prev, [avisoId]: data as Comment[] }));
+    }
+  };
+
   useEffect(() => {
     if (!activeAvisoComments) return;
-    // Commens are already loaded in state
+    fetchComments(activeAvisoComments);
   }, [activeAvisoComments]);
 
   // Handle Mark as Read
   const handleMarkAsRead = async (id: string, currentReads: string[]) => {
     if (currentReads.includes(userId)) return;
 
+    // Optimistic update
     const newReads = [...currentReads, userId];
+    setAvisos(avisos.map(a => a.id === id ? { ...a, readBy: newReads } : a));
 
-    const updated = avisos.map(aviso => {
-      if (aviso.id === id) {
-        return { ...aviso, readBy: newReads };
-      }
-      return aviso;
-    });
-    setAvisos(updated);
-    localStorage.setItem("hospital_avisos", JSON.stringify(updated));
+    try {
+      await supabase.from("notice_reads").insert({ notice_id: id, user_id: userId });
+    } catch (err) {
+      console.error("Erro ao marcar lido", err);
+    }
   };
 
   // Toggle Like Status
   const handleLikeToggle = async (id: string, currentLikes: string[]) => {
     const isLiked = currentLikes.includes(userId);
-    const newLikes = isLiked
-      ? currentLikes.filter(u => u !== userId)
-      : [...currentLikes, userId];
+    
+    // Optimistic
+    const newLikes = isLiked ? currentLikes.filter(u => u !== userId) : [...currentLikes, userId];
+    setAvisos(avisos.map(a => a.id === id ? { ...a, likes: newLikes } : a));
 
-    const updated = avisos.map(aviso => {
-      if (aviso.id === id) {
-        return { ...aviso, likes: newLikes };
+    try {
+      if (isLiked) {
+        await supabase.from("notice_likes").delete().match({ notice_id: id, user_id: userId });
+      } else {
+        await supabase.from("notice_likes").insert({ notice_id: id, user_id: userId });
       }
-      return aviso;
-    });
-    setAvisos(updated);
-    localStorage.setItem("hospital_avisos", JSON.stringify(updated));
+    } catch (err) {
+      console.error("Erro no like", err);
+    }
   };
 
   // Create notice
@@ -222,27 +251,40 @@ export default function AvisosPanel({ userRole, userName, userId }: AvisosPanelP
       authorId: userId,
       authorName: userName,
       authorRole: userRole,
-      likes: [] as string[],
-      readBy: [userId] as string[], // Creator automatically read it
       createdAt: Date.now()
     };
     
     try {
-      const localId = "local-" + Date.now();
-      const createdAviso: Aviso = {
-        id: localId,
-        ...avisoData
-      };
+      const { data, error } = await supabase.from("notices").insert(avisoData).select().single();
+      if (error) throw error;
       
-      const updated = [createdAviso, ...avisos];
-      setAvisos(updated);
-      localStorage.setItem("hospital_avisos", JSON.stringify(updated));
+      if (data) {
+        await supabase.from("notice_reads").insert({ notice_id: data.id, user_id: userId });
+        
+        // Dispara notificação push nativa (PWA)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          fetch('/api/send-push', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+              title: newPriority === 'urgente' ? `⚠️ URGENTE: ${newTitle.trim()}` : `Novo Aviso Oficial: ${newTitle.trim()}`,
+              body: newContent.trim().substring(0, 100) + '...',
+              url: '/'
+            })
+          }).catch(err => console.error("Erro ao enviar push:", err));
+        }
+      }
 
       setNewTitle("");
       setNewContent("");
       setNewCategory("Institucional");
       setNewPriority("normal");
       setShowCreateModal(false);
+      fetchAvisos();
     } catch (error) {
       console.error("Error publishing notice: ", error);
     } finally {
@@ -254,9 +296,12 @@ export default function AvisosPanel({ userRole, userName, userId }: AvisosPanelP
   const handleDeleteAviso = async (id: string) => {
     if (!confirm("Deseja mesmo remover permanentemente este aviso?")) return;
 
-    const updated = avisos.filter(a => a.id !== id);
-    setAvisos(updated);
-    localStorage.setItem("hospital_avisos", JSON.stringify(updated));
+    setAvisos(avisos.filter(a => a.id !== id));
+    try {
+      await supabase.from("notices").delete().eq("id", id);
+    } catch (err) {
+      console.error("Erro deletando aviso", err);
+    }
   };
 
   // Add Comment
@@ -265,6 +310,7 @@ export default function AvisosPanel({ userRole, userName, userId }: AvisosPanelP
     if (!newCommentVal.trim()) return;
 
     const commData = {
+      notice_id: avisoId,
       authorId: userId,
       authorName: userName,
       authorRole: userRole,
@@ -272,18 +318,13 @@ export default function AvisosPanel({ userRole, userName, userId }: AvisosPanelP
       createdAt: Date.now()
     };
 
-    const currentCommList = commentsMap[avisoId] || [];
-    const newComment: Comment = {
-      id: "comm-" + Date.now(),
-      ...commData
-    };
-    const updatedMap = {
-      ...commentsMap,
-      [avisoId]: [...currentCommList, newComment]
-    };
-    setCommentsMap(updatedMap);
-    localStorage.setItem("hospital_avisos_comments", JSON.stringify(updatedMap));
-    setNewCommentVal("");
+    try {
+      await supabase.from("notice_comments").insert(commData);
+      setNewCommentVal("");
+      fetchComments(avisoId);
+    } catch (err) {
+      console.error("Erro ao adicionar comentario", err);
+    }
   };
 
   // Filter lists

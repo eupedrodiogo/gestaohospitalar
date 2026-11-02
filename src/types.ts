@@ -1,13 +1,25 @@
 export type Language = 'pt' | 'en' | 'es';
 
+export interface Badge {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  earnedAt: number;
+}
+
 export interface UserProfile {
   userId: string;
   email: string;
   name: string;
-  role: 'colaborador' | 'lider' | 'rh' | 'ti' | 'inovacao' | 'sadt' | 'atendimento' | 'financeiro' | 'custos' | 'faturamento' | 'comercial' | 'marketing' | 'seguranca' | 'diretor_administrativo' | 'diretor_geral' | 'medico' | 'apresentador';
+  role: 'colaborador' | 'lider' | 'rh' | 'ti' | 'inovacao' | 'sadt' | 'atendimento' | 'financeiro' | 'custos' | 'faturamento' | 'comercial' | 'marketing' | 'seguranca' | 'diretor_administrativo' | 'diretor_geral' | 'medico' | 'apresentador' | 'master' | 'engenharia_clinica' | 'sesmt' | 'juridico' | 'suprimentos';
   department?: string;
   language: Language;
   createdAt: number;
+  badges?: Badge[];
+  force_password_change?: boolean;
+  lastLoginAt?: number;
+  passwordChangedAt?: number;
 }
 
 export interface Pdi {
@@ -98,3 +110,140 @@ export interface CommunityComment {
   createdAt: number;
 }
 
+export interface MessageDispatch {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: string;
+  audience: 'pacientes' | 'colaboradores' | 'todos' | string;
+  channels: {
+    whatsapp: boolean;
+    email: boolean;
+  };
+  subject?: string;
+  content: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  createdAt: number;
+}
+
+// =============================================
+// ENGENHARIA CLÍNICA — Tipos
+// =============================================
+
+export enum EquipmentStatus {
+  OPERATIONAL = 'Operacional',
+  MAINTENANCE = 'Em Manutenção',
+  CALIBRATION = 'Calibração',
+  DOWN = 'Inoperante',
+}
+
+export enum WorkOrderType {
+  PREVENTIVE = 'Preventiva',
+  CORRECTIVE = 'Corretiva',
+  CALIBRATION = 'Calibração',
+  INSTALLATION = 'Instalação',
+}
+
+export enum WorkOrderPriority {
+  LOW = 'Baixa',
+  MEDIUM = 'Média',
+  HIGH = 'Alta',
+  CRITICAL = 'Crítica',
+}
+
+export interface Equipment {
+  id: string;
+  name: string;
+  tag: string;
+  sector: string;
+  status: EquipmentStatus;
+  lastMaintenance: string;
+  nextMaintenance: string;
+  model: string;
+  manufacturer: string;
+}
+
+export interface WorkOrder {
+  id: string;
+  equipmentId: string;
+  equipmentName: string;
+  type: WorkOrderType;
+  priority: WorkOrderPriority;
+  status: 'Aberto' | 'Em Andamento' | 'Concluído' | 'Aguardando Peça';
+  createdAt: string;
+  technician?: string;
+  description: string;
+}
+
+export interface KPIMetrics {
+  uptime: number;
+  mtbf: number;
+  mttr: number;
+  openOrders: number;
+  totalAssets: number;
+  preventiveCompliance: number;
+}
+
+export interface DailyStat {
+  date: string;
+  preventive: number;
+  corrective: number;
+}
+
+export interface RawExcelData {
+  columns: string[];
+  rows: any[];
+  normalized: WorkOrder[];
+}
+
+// --- Gas Management Types ---
+
+export enum GasType {
+  O2_LIQUID = 'Oxigênio Líquido',
+  O2_CYLINDER_10M3 = 'Oxigênio 10m³',
+  O2_CYLINDER_7M3 = 'Oxigênio 7m³',
+  O2_CYLINDER_4M3 = 'Oxigênio 4m³',
+  O2_CYLINDER_1M3 = 'Oxigênio 1m³ (PPU)',
+  AIR_CYLINDER_10M3 = 'Ar Comprimido 10m³',
+  AIR_CYLINDER_7M3 = 'Ar Comprimido 7m³',
+  N2O = 'Óxido Nitroso',
+  NITROGEN = 'Nitrogênio',
+  CO2 = 'Dióxido de Carbono',
+  ACETYLENE = 'Acetileno',
+  ARGON = 'Argônio',
+  HELIUM = 'Hélio',
+}
+
+export interface LiquidGasEntry {
+  id: string;
+  date: string;
+  orderDate?: string;
+  orderNumber?: string;
+  invoiceDate?: string;
+  invoiceNumber: string;
+  volume: number;
+  pricePerUnit: number;
+  totalValue: number;
+  boletoDueDate?: string;
+  paymentStatus: 'OK' | 'NOK' | 'Pending';
+}
+
+export interface CylinderDeliveryItem {
+  gasType: GasType | string;
+  quantity: number;
+  volume?: number;
+  priceUnit: number;
+  total: number;
+}
+
+export interface CylinderDelivery {
+  id: string;
+  date: string;
+  orderDate?: string;
+  orderNumber?: string;
+  invoiceDate?: string;
+  invoiceNumber: string;
+  supplier: string;
+  items: CylinderDeliveryItem[];
+  totalValue: number;
+}

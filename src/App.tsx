@@ -60,9 +60,11 @@ import {
   Rocket,
   Landmark,
   ShieldCheck,
-  Activity
+  Vote,
 } from "lucide-react";
 import { PresentationView } from "./components/PresentationView";
+import { EditMenuModal } from "./components/EditMenuModal";
+import { ALL_NAV_MODULES, getNavModuleById } from "./utils/navigationModules";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 import { supabase } from "./lib/supabase";
@@ -110,11 +112,18 @@ import SesmtPanel from "./pages/SesmtPanel";
 import JuridicoPanel from "./pages/JuridicoPanel";
 import SegurancaTrabalhoPanel from "./pages/SegurancaTrabalhoPanel";
 import AvisosPanel from "./pages/AvisosPanel";
+import QuickPollsPanel from "./pages/QuickPollsPanel";
+import MasterAdminPanel from "./pages/MasterAdminPanel";
 import DiretoriaAdministrativaPanel from "./pages/DiretoriaAdministrativaPanel";
 import DiretoriaGeralPanel from "./pages/DiretoriaGeralPanel";
 import NetworkPanel from "./pages/NetworkPanel";
+import ChatPanel from "./pages/ChatPanel";
+import GlobalNotifications from "./components/GlobalNotifications";
+import InstallPrompt from "./components/InstallPrompt";
+import { ForcePasswordChangeModal } from "./components/ForcePasswordChangeModal";
 
 import SuprimentosPanel from "./pages/SuprimentosPanel";
+import EngenhariaClinicaPanel from "./pages/EngenhariaClinicaPanel";
 
 export const getInitialTab = (role: string) => {
   if (role === "apresentador") return "apresentacao";
@@ -134,6 +143,7 @@ export const getInitialTab = (role: string) => {
   if (role === "diretor_administrativo") return "diretor_administrativo";
   if (role === "diretor_geral") return "diretor_geral";
   if (role === "suprimentos") return "suprimentos";
+  if (role === "engenharia_clinica") return "engenharia_clinica";
   return "home";
 };
 
@@ -373,11 +383,25 @@ export const ALLOWED_TABS_BY_ROLE: Record<string, string[]> = {
     "apresentacao",
     "settings",
   ],
+  engenharia_clinica: [
+    "engenharia_clinica",
+    "network",
+    "avisos",
+    "settings",
+  ],
 };
+
+export let DYNAMIC_ALLOWED_TABS_BY_ROLE: Record<string, string[]> = { ...ALLOWED_TABS_BY_ROLE };
 
 export function isTabAllowed(tab: string, role: string): boolean {
   if (!role) return false;
-  const allowed = ALLOWED_TABS_BY_ROLE[role];
+  if (role === 'master') return true;
+  if (tab === "enquetes" || tab === "chat") return true;
+  
+  // Normalizar role e fallback para colaborador se não existir regras
+  const normalizedRole = role.toLowerCase();
+  const allowed = DYNAMIC_ALLOWED_TABS_BY_ROLE[normalizedRole] || DYNAMIC_ALLOWED_TABS_BY_ROLE["colaborador"];
+  
   if (!allowed) return false;
   return allowed.includes(tab);
 }
@@ -392,6 +416,28 @@ export default function App() {
   const [currentLang, setCurrentLang] = useState<Language>("pt");
   const [authError, setAuthError] = useState<string | null>(null);
   const [isRetryingAuth, setIsRetryingAuth] = useState(false);
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
+  const [showForcePasswordModal, setShowForcePasswordModal] = useState(false);
+
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      try {
+        const { data, error } = await supabase.from('role_permissions').select('*');
+        if (data && !error && data.length > 0) {
+          const newPermissions: Record<string, string[]> = { ...ALLOWED_TABS_BY_ROLE };
+          data.forEach(row => {
+            newPermissions[row.role_id] = row.allowed_tabs;
+          });
+          DYNAMIC_ALLOWED_TABS_BY_ROLE = newPermissions;
+        }
+      } catch (e) {
+        console.error("Failed to load permissions", e);
+      } finally {
+        setPermissionsLoaded(true);
+      }
+    };
+    fetchPermissions();
+  }, []);
 
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return localStorage.getItem("hsf_has_seen_onboarding_v2") !== "true";
@@ -410,23 +456,52 @@ export default function App() {
     return saved || generateRandomPassphrase();
   });
 
-  // Cycle and Active tab
-  const [activeTab, setActiveTab] = useState<string>("home");
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    return localStorage.getItem("hsf_active_tab") || "home";
+  });
 
   useEffect(() => {
-    if (profile?.role) {
+    localStorage.setItem("hsf_active_tab", activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (profile?.role && permissionsLoaded) {
       if (!isTabAllowed(activeTab, profile.role)) {
-        const allowed = ALLOWED_TABS_BY_ROLE[profile.role];
+        const normalizedRole = profile.role.toLowerCase();
+        const allowed = DYNAMIC_ALLOWED_TABS_BY_ROLE[normalizedRole] || DYNAMIC_ALLOWED_TABS_BY_ROLE["colaborador"];
         if (allowed && allowed.length > 0) {
           setActiveTab(allowed[0]);
         }
       }
     }
-  }, [profile?.role, activeTab]);
+  }, [profile?.role, activeTab, permissionsLoaded]);
   const [selectedCycle, setSelectedCycle] = useState("2026");
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(() => {
-    return localStorage.getItem("hsf_sidebar_expanded") !== "false";
+    const saved = localStorage.getItem("hsf_sidebar_expanded");
+    return saved !== null ? saved === "true" : true;
   });
+
+  const [isEditingMenu, setIsEditingMenu] = useState(false);
+  const [customNavOrder, setCustomNavOrder] = useState<string[]>([]);
+  
+  useEffect(() => {
+    const savedOrder = localStorage.getItem('hsf_custom_nav_order');
+    if (savedOrder) {
+      try {
+        setCustomNavOrder(JSON.parse(savedOrder));
+      } catch(e) {}
+    }
+  }, []);
+  
+  const [mobileFixedCount, setMobileFixedCount] = useState<number>(() => {
+    const savedCount = localStorage.getItem('hsf_mobile_fixed_count');
+    return savedCount ? parseInt(savedCount, 10) : 4;
+  });
+  
+  useEffect(() => {
+    localStorage.setItem('hsf_mobile_fixed_count', mobileFixedCount.toString());
+  }, [mobileFixedCount]);
+
   const [showMoreTabs, setShowMoreTabs] = useState(false);
 
   // Firestore Sync States
@@ -499,10 +574,31 @@ export default function App() {
       const latest = notifications[0]; // because we sort by createdAt descending
       if (latest && !latest.read && latest.createdAt > Date.now() - 5000) {
         if ("Notification" in window && Notification.permission === "granted") {
-          new Notification(latest.title, {
-            body: latest.message,
-            icon: "/icon.png",
-          });
+          if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.ready.then((registration) => {
+              registration.showNotification(latest.title, {
+                body: latest.message,
+                icon: "/icon-192x192.png",
+                vibrate: [200, 100, 200, 100, 200, 100, 200],
+                requireInteraction: true,
+                silent: false,
+              } as any);
+            }).catch(() => {
+              new Notification(latest.title, {
+                body: latest.message,
+                icon: "/icon-192x192.png",
+                requireInteraction: true,
+                silent: false,
+              });
+            });
+          } else {
+            new Notification(latest.title, {
+              body: latest.message,
+              icon: "/icon-192x192.png",
+              requireInteraction: true,
+              silent: false,
+            });
+          }
         }
       }
     }
@@ -555,7 +651,9 @@ export default function App() {
         if (myProfile) {
           setProfile(myProfile);
           setCurrentLang(myProfile.language || "pt");
-          setActiveTab(getInitialTab(myProfile.role));
+          if (!localStorage.getItem("hsf_active_tab")) {
+            setActiveTab(getInitialTab(myProfile.role));
+          }
         }
       }
       setIsAuthReady(true);
@@ -579,7 +677,22 @@ export default function App() {
             const profData = data as UserProfile;
             setProfile(profData);
             setCurrentLang(profData.language || "pt");
-            setActiveTab(getInitialTab(profData.role));
+            
+            if (event === 'SIGNED_IN') {
+              supabase.from("user_profiles").update({ lastLoginAt: Date.now() }).eq("userId", sbUser.id).then(({error: upErr}) => {
+                if (upErr) {
+                   console.warn("Retrying auto lastLoginAt update with ISO string", upErr);
+                   supabase.from("user_profiles").update({ lastLoginAt: new Date().toISOString() as any }).eq("userId", sbUser.id).then(()=>{});
+                }
+              });
+            }
+
+            if (!localStorage.getItem("hsf_active_tab")) {
+              setActiveTab(getInitialTab(profData.role));
+            }
+            if (profData.force_password_change) {
+              setShowForcePasswordModal(true);
+            }
           } else {
             setAuthError("Sua conta existe, mas o perfil não foi vinculado. Contate a TI.");
           }
@@ -794,7 +907,9 @@ export default function App() {
     setAllProfiles(profilesList);
     setProfile(prof);
     setCurrentLang(prof.language);
-    setActiveTab(getInitialTab(prof.role));
+    if (!localStorage.getItem("hsf_active_tab")) {
+      setActiveTab(getInitialTab(prof.role));
+    }
 
     // Seed some PDIs and checkins so lists work beautifully
     const storedPdis = localStorage.getItem("hsf_offline_pdimocks_v6");
@@ -972,7 +1087,19 @@ export default function App() {
           supabase.from("pdis").select("*"),
           supabase.from("notifications").select("*").eq("userId", currentUser.uid).order("createdAt", { ascending: false })
         ]);
-        if (profRes.data) setAllProfiles(profRes.data as UserProfile[]);
+        if (profRes.data) {
+          const withMockBadges = profRes.data.map((u: any) => {
+             if (!u.badges || u.badges.length === 0) {
+                return { ...u, badges: [
+                   { id: '1', name: '5 Anos de Casa', icon: '🏆', description: 'Tempo de empresa', earnedAt: Date.now() - 86400000 * 365 * 5 },
+                   { id: '2', name: 'Zero Faltas', icon: '⭐', description: 'Assiduidade perfeita', earnedAt: Date.now() - 86400000 * 30 },
+                   { id: '3', name: 'Biossegurança', icon: '🛡️', description: 'Treinamento concluído', earnedAt: Date.now() - 86400000 * 10 }
+                ]};
+             }
+             return u;
+          });
+          setAllProfiles(withMockBadges as UserProfile[]);
+        }
         if (pdiRes.data) setAllPdis(pdiRes.data as Pdi[]);
         if (notifRes.data) setNotifications(notifRes.data as any[]);
       } catch (err) {
@@ -986,7 +1113,19 @@ export default function App() {
     const channel = supabase.channel('app_realtime_main')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, () => {
         supabase.from("user_profiles").select("*").then(({data}) => {
-          if(data) setAllProfiles(data as UserProfile[]);
+          if(data) {
+            const withMockBadges = data.map((u: any) => {
+               if (!u.badges || u.badges.length === 0) {
+                  return { ...u, badges: [
+                     { id: '1', name: '5 Anos de Casa', icon: '🏆', description: 'Tempo de empresa', earnedAt: Date.now() - 86400000 * 365 * 5 },
+                     { id: '2', name: 'Zero Faltas', icon: '⭐', description: 'Assiduidade perfeita', earnedAt: Date.now() - 86400000 * 30 },
+                     { id: '3', name: 'Biossegurança', icon: '🛡️', description: 'Treinamento concluído', earnedAt: Date.now() - 86400000 * 10 }
+                  ]};
+               }
+               return u;
+            });
+            setAllProfiles(withMockBadges as UserProfile[]);
+          }
         });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pdis' }, () => {
@@ -1178,7 +1317,7 @@ export default function App() {
       }
 
       // Autenticação com Senha no Supabase usando o email montado
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: corporativeEmail,
         password,
       });
@@ -1191,6 +1330,14 @@ export default function App() {
           setAuthError("Servidor de autenticação indisponível no momento. Tente novamente em alguns minutos.");
         }
         return;
+      }
+
+      if (data?.user) {
+        const { error: updateErr } = await supabase.from("user_profiles").update({ lastLoginAt: Date.now() }).eq("userId", data.user.id);
+        if (updateErr) {
+          console.warn("Retrying lastLoginAt update with ISO string", updateErr);
+          await supabase.from("user_profiles").update({ lastLoginAt: new Date().toISOString() as any }).eq("userId", data.user.id);
+        }
       }
 
       // Se o login for bem-sucedido, o onAuthStateChange cuidará do resto e carregará o perfil da tabela user_profiles
@@ -1801,6 +1948,16 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-200 selection:bg-teal-500/30 transition-colors duration-300">
+      <GlobalNotifications currentUser={currentUser} />
+      <InstallPrompt />
+      
+      {showForcePasswordModal && profile && (
+        <ForcePasswordChangeModal
+          userId={profile.userId}
+          currentLang={currentLang}
+          onSuccess={() => setShowForcePasswordModal(false)}
+        />
+      )}
       {/* Dynamic Toast Alerts */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-[100] animate-bounce bg-slate-900 border border-slate-800 shadow-[0_0_20px_rgba(45,212,191,0.2)] text-teal-400 p-4 border-l-4 border-teal-505 rounded-xl max-w-sm flex items-center gap-3">
@@ -1896,7 +2053,9 @@ export default function App() {
               : null,
           );
           setSelectedPdi(null);
-          setActiveTab(getInitialTab(newRole));
+          if (!localStorage.getItem("hsf_active_tab")) {
+            setActiveTab(getInitialTab(newRole));
+          }
         }}
         currentCycle={selectedCycle}
         onCycleChange={setSelectedCycle}
@@ -1906,11 +2065,13 @@ export default function App() {
         isOfflineDemo={isOfflineDemo}
         onExitOfflineDemo={handleExitOfflineMode}
 
-        onLogout={() => {
+        onLogout={async () => {
           setProfile(null);
           localStorage.removeItem("hsf_pdi_offline_mode");
+          localStorage.removeItem("hsf_active_tab");
           setIsOfflineDemo(false);
           setAuthError(null);
+          await supabase.auth.signOut();
         }}
       />
 
@@ -1945,17 +2106,61 @@ export default function App() {
                       Notification.requestPermission().then((p) => {
                         setPushPermission(p);
                         if (p === "granted") {
-                          new Notification("Notificações Push Ativadas!", {
-                            icon: "/icon.png",
-                          });
                           if ("serviceWorker" in navigator) {
-                            navigator.serviceWorker
-                              .register("/sw.js")
-                              .then((registration) => {
-                                console.log(
-                                  "ServiceWorker registration successful with scope: ",
-                                  registration.scope,
-                                );
+                            navigator.serviceWorker.ready.then((registration) => {
+                              registration.showNotification("Notificações Push Ativadas!", {
+                                icon: "/icon-192x192.png",
+                                vibrate: [200, 100, 200, 100, 200, 100, 200],
+                                requireInteraction: true,
+                                silent: false
+                              } as any);
+                            }).catch(() => {
+                              new Notification("Notificações Push Ativadas!", {
+                                icon: "/icon-192x192.png",
+                                requireInteraction: true,
+                                silent: false
+                              });
+                            });
+                          } else {
+                            new Notification("Notificações Push Ativadas!", {
+                              icon: "/icon-192x192.png",
+                              requireInteraction: true,
+                              silent: false
+                            });
+                          }
+                          if ("serviceWorker" in navigator) {
+                            navigator.serviceWorker.ready
+                              .then(async (registration) => {
+                                console.log("ServiceWorker ready with scope: ", registration.scope);
+                                const publicVapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+                                if (!publicVapidKey) return;
+                                
+                                const urlBase64ToUint8Array = (base64String: string) => {
+                                  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+                                  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+                                  const rawData = window.atob(base64);
+                                  const outputArray = new Uint8Array(rawData.length);
+                                  for (let i = 0; i < rawData.length; ++i) {
+                                    outputArray[i] = rawData.charCodeAt(i);
+                                  }
+                                  return outputArray;
+                                };
+
+                                try {
+                                  const subscription = await registration.pushManager.subscribe({
+                                    userVisibleOnly: true,
+                                    applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+                                  });
+
+                                  if (currentUser?.uid) {
+                                    await supabase.from('push_subscriptions').insert({
+                                      user_id: currentUser.uid,
+                                      subscription: subscription.toJSON()
+                                    });
+                                  }
+                                } catch (subErr) {
+                                  console.error("Erro ao assinar Push:", subErr);
+                                }
                               })
                               .catch((err) => {
                                 console.log(
@@ -2082,7 +2287,7 @@ export default function App() {
         {/* Sidebar Navigation (Desktop) */}
         {activeTab !== "apresentacao" && (
         <aside
-          className={`hidden md:flex flex-col gap-3 shrink-0 border-r border-slate-800 pr-2 transition-all duration-300 relative ${
+          className={`hidden md:flex flex-col gap-3 shrink-0 border-r border-slate-800 pr-2 transition-all duration-300 sticky top-6 h-[calc(100vh-9rem)] overflow-hidden ${
             isSidebarExpanded ? "w-44" : "w-[4rem]"
           }`}
         >
@@ -2102,728 +2307,98 @@ export default function App() {
             )}
           </button>
 
-          {isTabAllowed("metrics", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("metrics")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "metrics"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "People Analytics" : undefined}
-            >
-              <BarChart2 className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap flex leading-tight">People<br/>Analytics</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("avisos", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("avisos")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "avisos"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Mural de Avisos" : undefined}
-            >
-              <Megaphone className="w-[20px] h-[20px] shrink-0 text-teal-400" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap tracking-tighter">
-                  Mural de Avisos
-                </span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("home", profile?.role || "") && (
-            <button
-              data-tour="nav-home"
-              onClick={() => {
-                setActiveTab("home");
-                setSelectedPdi(null);
-              }}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "home"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={
-                !isSidebarExpanded
-                  ? profile.role === "colaborador"
-                    ? "Meu PDI"
-                    : profile.role === "lider"
-                      ? "Minha Equipe"
-                      : "Monitorização"
-                  : undefined
-              }
-            >
-              <ClipboardList className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">
-                  {profile.role === "colaborador"
-                    ? "Meu PDI"
-                    : profile.role === "lider"
-                      ? "Minha Equipe"
-                      : "Monitorização"}
-                </span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("apresentacao", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("apresentacao")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "apresentacao"
-                  ? "bg-purple-500/10 text-purple-400 border border-purple-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Pitch / Reunião" : undefined}
-            >
-              <Rocket className="w-[20px] h-[20px] shrink-0 text-purple-400" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">Pitch / Reunião</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("escala", profile?.role || "") && (
-            <button
-              data-tour="nav-escala"
-              onClick={() => setActiveTab("escala")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "escala"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Escala" : undefined}
-            >
-              <Clock className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">Escopo / Ponto</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("documentos", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("documentos")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "documentos"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Documentos" : undefined}
-            >
-              <FileText className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">Documentos</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("holerite", profile?.role || "") && (
-            <button
-              data-tour="nav-holerite"
-              onClick={() => setActiveTab("holerite")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "holerite"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? (profile?.role === "medico" ? "Repasses" : "Financeiro") : undefined}
-            >
-              <DollarSign className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">{profile?.role === "medico" ? "Repasses" : "Financeiro"}</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("assessment", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("assessment")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "assessment"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Avaliações" : undefined}
-            >
-              <Activity className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap tracking-tighter">
-                  Avaliações
-                </span>
-              )}
-            </button>
-          )}
-
-          {profile && ["rh", "lider", "colaborador"].includes(profile.role) && (
-            <div className="pt-2 border-t border-slate-800/50 mt-2">
-              <button
-                onClick={() => setShowMoreTabs(!showMoreTabs)}
-                className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  showMoreTabs ||
-                  [
-                    "recrutamento",
-                    "vagas",
-                    "climate",
-                    "training",
-                    "feedback",
-                    "inovacao"
-                  ].includes(activeTab)
-                    ? "text-slate-100 bg-slate-900/40"
-                    : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40"
-                }`}
-                title={!isSidebarExpanded ? "Mais Módulos" : undefined}
-              >
-                <MoreHorizontal className="w-[20px] h-[20px] shrink-0" />
-                {isSidebarExpanded && (
-                  <span className="whitespace-nowrap flex-grow text-left">
-                    Mais Módulos
-                  </span>
-                )}
-                {isSidebarExpanded &&
-                  (showMoreTabs ? (
-                    <ChevronUp className="w-4 h-4" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4" />
-                  ))}
-              </button>
-
-              {showMoreTabs && (
-                <div className="flex flex-col gap-1 mt-1 pl-1">
-                  {isTabAllowed("recrutamento", profile?.role || "") && (
+          {/* Menu Desktop Refatorado e Agrupado */}
+          <div className="flex-1 min-h-0 flex flex-col gap-1 overflow-y-auto scrollbar-none pb-4 relative px-2">
+            {customNavOrder.length > 0 ? (
+              <div className="flex flex-col gap-1 pt-2">
+                {customNavOrder.filter(id => isTabAllowed(id, profile?.role || "")).map(id => {
+                  const mod = getNavModuleById(id);
+                  if (!mod) return null;
+                  const label = typeof mod.label === 'function' ? mod.label(profile?.role || "") : mod.label;
+                  return (
                     <button
-                      onClick={() => setActiveTab("recrutamento")}
+                      key={mod.id}
+                      data-tour={mod.tourId}
+                      onClick={() => { setActiveTab(mod.id); setSelectedPdi(null); }}
                       className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                        activeTab === "recrutamento"
-                          ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
+                        activeTab === mod.id
+                          ? mod.bgClass || "bg-teal-500/10 text-teal-400 border border-teal-500/30"
                           : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
                       }`}
-                      title={!isSidebarExpanded ? "Recrutamento" : undefined}
+                      title={!isSidebarExpanded ? label : undefined}
                     >
-                      <Users className="w-[20px] h-[20px] shrink-0" />
+                      <mod.icon className={`w-[20px] h-[20px] shrink-0 ${mod.colorClass || (activeTab === mod.id ? 'text-teal-400' : '')}`} />
                       {isSidebarExpanded && (
-                        <span className="whitespace-nowrap tracking-tighter">
-                          Recrutamento
-                        </span>
+                        <span className="whitespace-nowrap tracking-tighter">{label}</span>
                       )}
                     </button>
-                  )}
-                  {isTabAllowed("vagas", profile?.role || "") && (
-                    <button
-                      onClick={() => setActiveTab("vagas")}
-                      className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                        activeTab === "vagas"
-                          ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                          : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-                      }`}
-                      title={!isSidebarExpanded ? "Vagas Internas" : undefined}
-                    >
-                      <Briefcase className="w-[20px] h-[20px] shrink-0" />
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1 pt-2">
+                {Array.from(
+                  new Set(
+                    ALL_NAV_MODULES
+                      .filter((m) => isTabAllowed(m.id, profile?.role || ""))
+                      .map((m) => m.category || "Outros")
+                  )
+                ).map((category) => {
+                  const categoryModules = ALL_NAV_MODULES.filter(
+                    (m) => (m.category || "Outros") === category && isTabAllowed(m.id, profile?.role || "")
+                  );
+                  
+                  if (categoryModules.length === 0) return null;
+
+                  return (
+                    <div key={category} className="mb-4">
                       {isSidebarExpanded && (
-                        <span className="whitespace-nowrap tracking-tighter">
-                          Vagas Internas
-                        </span>
+                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-2 mt-1 truncate">
+                          {category}
+                        </h4>
                       )}
-                    </button>
-                  )}
-                  {isTabAllowed("inovacao", profile?.role || "") && (
-                    <button
-                      onClick={() => setActiveTab("inovacao")}
-                      className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                        activeTab === "inovacao"
-                          ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                          : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-                      }`}
-                      title={!isSidebarExpanded ? "Hub de Inovação" : undefined}
-                    >
-                      <Lightbulb className="w-[20px] h-[20px] shrink-0" />
-                      {isSidebarExpanded && (
-                        <span className="whitespace-nowrap tracking-tighter">
-                          Hub de Inovação
-                        </span>
+                      {!isSidebarExpanded && (
+                        <div className="w-8 h-px bg-slate-800 mx-auto my-3" />
                       )}
-                    </button>
-                  )}
-                  {isTabAllowed("climate", profile?.role || "") && (
-                    <button
-                      onClick={() => setActiveTab("climate")}
-                      className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                        activeTab === "climate"
-                          ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                          : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-                      }`}
-                      title={!isSidebarExpanded ? "Clima eNPS" : undefined}
-                    >
-                      <Heart className="w-[20px] h-[20px] shrink-0" />
-                      {isSidebarExpanded && (
-                        <span className="whitespace-nowrap tracking-tighter">
-                          Clima eNPS
-                        </span>
-                      )}
-                    </button>
-                  )}
-                  {isTabAllowed("training", profile?.role || "") && (
-                    <button
-                      onClick={() => setActiveTab("training")}
-                      className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                        activeTab === "training"
-                          ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                          : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-                      }`}
-                      title={!isSidebarExpanded ? "Treinamentos" : undefined}
-                    >
-                      <BookOpen className="w-[20px] h-[20px] shrink-0" />
-                      {isSidebarExpanded && (
-                        <span className="whitespace-nowrap tracking-tighter">
-                          Treinamentos
-                        </span>
-                      )}
-                    </button>
-                  )}
-                  {isTabAllowed("feedback", profile?.role || "") && (
-                    <button
-                      onClick={() => {
-                        setTargetFeedbackEmployee(undefined);
-                        setActiveTab("feedback");
-                      }}
-                      className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                        activeTab === "feedback"
-                          ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                          : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-                      }`}
-                      title={!isSidebarExpanded ? t.feedbackTab : undefined}
-                    >
-                      <MessageSquare className="w-[20px] h-[20px] shrink-0" />
-                      {isSidebarExpanded && (
-                        <span className="whitespace-nowrap">{t.feedbackTab}</span>
-                      )}
-                    </button>
-                  )}
-
-                  {isTabAllowed("sesmt", profile?.role || "") && (
-                    <button
-                      onClick={() => setActiveTab("sesmt")}
-                      className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                        activeTab === "sesmt"
-                          ? "bg-purple-500/10 text-purple-400 border border-purple-500/30"
-                          : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-                      }`}
-                      title={!isSidebarExpanded ? "SESMT" : undefined}
-                    >
-                      <Shield className="w-[20px] h-[20px] shrink-0" />
-                      {isSidebarExpanded && (
-                        <span className="whitespace-nowrap truncate">
-                          SESMT
-                        </span>
-                      )}
-                    </button>
-                  )}
-
-                  {isTabAllowed("juridico", profile?.role || "") && (
-                    <button
-                      onClick={() => setActiveTab("juridico")}
-                      className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                        activeTab === "juridico"
-                          ? "bg-[#693A32]/20 text-white border border-[#693A32]/35"
-                          : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-                      }`}
-                      title={!isSidebarExpanded ? "Jurídico" : undefined}
-                    >
-                      <Scale className="w-[20px] h-[20px] shrink-0 text-[#A78177]" />
-                      {isSidebarExpanded && (
-                        <span className="whitespace-nowrap truncate">
-                          Jurídico
-                        </span>
-                      )}
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => setActiveTab("settings")}
-                    className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                      activeTab === "settings"
-                        ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                        : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-                    }`}
-                    title={!isSidebarExpanded ? "Configurações" : undefined}
-                  >
-                    <Settings className="w-[20px] h-[20px] shrink-0" />
-                    {isSidebarExpanded && (
-                      <span className="whitespace-nowrap">Configurações</span>
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {profile.role === "ti" && (
-            <>
-              <button
-                onClick={() => setActiveTab("backup")}
-                className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  activeTab === "backup"
-                    ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                    : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-                }`}
-                title={!isSidebarExpanded ? t.backupTab : undefined}
-              >
-                <Lock className="w-[20px] h-[20px] shrink-0" />
-                {isSidebarExpanded && (
-                  <span className="whitespace-nowrap">{t.backupTab}</span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setActiveTab("acessos")}
-                className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  activeTab === "acessos"
-                    ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                    : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-                }`}
-                title={!isSidebarExpanded ? "Acessos" : undefined}
-              >
-                <Shield className="w-[20px] h-[20px] shrink-0" />
-                {isSidebarExpanded && (
-                  <span className="whitespace-nowrap">Acessos</span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setActiveTab("logs")}
-                className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  activeTab === "logs"
-                    ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                    : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-                }`}
-                title={!isSidebarExpanded ? "Arquitetura & Logs" : undefined}
-              >
-                <Database className="w-[20px] h-[20px] shrink-0" />
-                {isSidebarExpanded && (
-                  <span className="whitespace-nowrap tracking-tighter">
-                    Arquitetura & Logs
-                  </span>
-                )}
-              </button>
-            </>
-          )}
-
-          {profile.role === "inovacao" && (
-            <button
-              onClick={() => setActiveTab("inovacao")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "inovacao"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Hub de Inovação" : undefined}
+                      <div className="flex flex-col gap-1">
+                        {categoryModules.map((mod) => {
+                          const label = typeof mod.label === 'function' ? mod.label(profile?.role || "") : mod.label;
+                          return (
+                            <button
+                              key={mod.id}
+                              data-tour={mod.tourId}
+                              onClick={() => { setActiveTab(mod.id); setSelectedPdi(null); }}
+                              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                                activeTab === mod.id
+                                  ? mod.bgClass || "bg-teal-500/10 text-teal-400 border border-teal-500/30"
+                                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
+                              }`}
+                              title={!isSidebarExpanded ? label : undefined}
+                            >
+                              <mod.icon className={`w-[20px] h-[20px] shrink-0 ${mod.colorClass || (activeTab === mod.id ? 'text-teal-400' : '')}`} />
+                              {isSidebarExpanded && (
+                                <span className="whitespace-nowrap tracking-tighter">{label}</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            <button 
+              onClick={() => setIsEditingMenu(true)} 
+              className={`mt-2 mb-2 flex items-center justify-center gap-2 text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 p-2 rounded-xl transition-all ${isSidebarExpanded ? 'w-full px-3' : 'w-10 h-10 mx-auto'}`}
+              title={!isSidebarExpanded ? "Personalizar Menu" : undefined}
             >
-              <Lightbulb className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">Hub de Inovação</span>
-              )}
-            </button>
-          )}
-          {isTabAllowed("suprimentos", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("suprimentos")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "suprimentos"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Suprimentos & Logística" : undefined}
-            >
-              <Package className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">Suprimentos</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("sadt", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("sadt")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "sadt"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "SADT" : undefined}
-            >
-              <Activity className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">SADT</span>
-              )}
-            </button>
-          )}
-          {isTabAllowed("atendimento", profile?.role || "") && (
-            <button
-               onClick={() => setActiveTab("atendimento")}
-               className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                 activeTab === "atendimento"
-                   ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                   : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-               }`}
-               title={!isSidebarExpanded ? "Atendimento" : undefined}
-             >
-               <HeartHandshake className="w-[20px] h-[20px] shrink-0" />
-               {isSidebarExpanded && (
-                 <span className="whitespace-nowrap">Atendimento</span>
-               )}
-             </button>
-           )}
-
-          {isTabAllowed("caixa", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("caixa")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "caixa"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Visão Geral & Caixa" : undefined}
-            >
-              <Activity className="w-[20px] h-[20px] shrink-0 text-teal-400" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">Visão Geral & Caixa</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("dre", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("dre")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "dre"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "DRE Gerencial" : undefined}
-            >
-              <FileText className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">DRE Gerencial</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("tesouraria", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("tesouraria")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "tesouraria"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Títulos & Tesouraria" : undefined}
-            >
-              <Landmark className="w-[20px] h-[20px] shrink-0 text-teal-400" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">Títulos & Tesouraria</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("glosas", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("glosas")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "glosas"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Auditoria & Glosas" : undefined}
-            >
-              <ShieldCheck className="w-[20px] h-[20px] shrink-0 text-teal-400" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">Auditoria & Glosas</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("faturamento", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("faturamento")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "faturamento"
-                  ? "bg-teal-500/10 text-teal-500 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Faturamento e Glosas" : undefined}
-            >
-              <BarChart2 className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">Faturamento e Glosas</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("kpis", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("kpis")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "kpis"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Cockpit de KPIs" : undefined}
-            >
-              <Activity className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">Cockpit KPIs</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("simulador_custos", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("simulador_custos")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "simulador_custos"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Simulador" : undefined}
-            >
-              <Sliders className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">Simulador</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("comercial", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("comercial")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "comercial"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Comercial" : undefined}
-            >
-              <TrendingUp className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">Comercial</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("marketing", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("marketing")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "marketing"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Marketing" : undefined}
-            >
-              <Megaphone className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">Marketing</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("seguranca", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("seguranca")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "seguranca"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Segurança do Trabalho" : undefined}
-            >
-              <HardHat className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap">Segurança do Trab.</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("diretor_administrativo", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("diretor_administrativo")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-2.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "diretor_administrativo"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-400/30 shadow-[0_0_12px_rgba(45,212,191,0.15)]"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Diretoria Adm." : undefined}
-            >
-              <Briefcase className="w-[18px] h-[18px] shrink-0 text-teal-400" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap text-teal-400">Cockpit Diretoria</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("diretor_geral", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("diretor_geral")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-2.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "diretor_geral"
-                  ? "bg-amber-500/10 text-amber-400 border border-amber-400/30 shadow-[0_0_12px_rgba(245,158,11,0.15)]"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Diretoria Geral" : undefined}
-            >
-              <Crown className="w-[18px] h-[18px] shrink-0 text-amber-400" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap text-amber-400">Cockpit Geral</span>
-              )}
-            </button>
-          )}
-
-          {isTabAllowed("network", profile?.role || "") && (
-            <button
-              onClick={() => setActiveTab("network")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "network"
-                  ? "bg-rose-500/10 text-rose-400 border border-rose-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Rede Social HSF" : undefined}
-            >
-              <HeartHandshake className="w-[20px] h-[20px] shrink-0 text-rose-400" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap tracking-tighter">
-                  Comunidade HSF
-                </span>
-              )}
-            </button>
-          )}
-
-
-
-          <div className="mt-auto pt-4 border-t border-slate-800/50">
-            <button
-              onClick={() => setActiveTab("settings")}
-              className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                activeTab === "settings"
-                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-              }`}
-              title={!isSidebarExpanded ? "Configurações" : undefined}
-            >
-              <Settings className="w-[20px] h-[20px] shrink-0" />
-              {isSidebarExpanded && (
-                <span className="whitespace-nowrap tracking-tighter">
-                  Configurações
-                </span>
-              )}
+              <Settings className="w-4 h-4 shrink-0" />
+              {isSidebarExpanded && <span className="text-xs font-bold uppercase">Personalizar Menu</span>}
             </button>
           </div>
+
         </aside>
         )}
 
@@ -2852,6 +2427,10 @@ export default function App() {
 
           {activeTab === "metrics" && (
             <MetricsPanel allPdis={allPdis} cycle={selectedCycle} />
+          )}
+
+          {activeTab === "chat" && currentUser && (
+            <ChatPanel currentUser={profile} />
           )}
 
           {activeTab === "climate" && (
@@ -2916,6 +2495,10 @@ export default function App() {
             <SegurancaTrabalhoPanel userRole={profile.role} userName={profile.name} />
           )}
 
+          {activeTab === "engenharia_clinica" && (
+            <EngenhariaClinicaPanel />
+          )}
+
           {activeTab === "diretor_administrativo" && (
             <DiretoriaAdministrativaPanel userRole={profile.role} userName={profile.name} />
           )}
@@ -2926,6 +2509,10 @@ export default function App() {
 
           {activeTab === "settings" && (
             <SettingsPanel userName={profile.name} userRole={profile.role} />
+          )}
+
+          {activeTab === "admin" && (
+            <MasterAdminPanel />
           )}
 
           {activeTab === "apresentacao" && (
@@ -2950,8 +2537,17 @@ export default function App() {
             <NetworkPanel currentUser={profile} />
           )}
 
+
           {activeTab === "avisos" && (
             <AvisosPanel
+              userId={currentUser?.uid || "colaborador-id"}
+              userRole={profile?.role || "colaborador"}
+              userName={profile?.name || "Colaborador"}
+            />
+          )}
+
+          {activeTab === "enquetes" && (
+            <QuickPollsPanel
               userId={currentUser?.uid || "colaborador-id"}
               userRole={profile?.role || "colaborador"}
               userName={profile?.name || "Colaborador"}
@@ -3141,6 +2737,7 @@ export default function App() {
                         selectedEmployeeProfile.coordinatorName,
                       )}
                       checkins={checkinsCache[selectedEmployeeProfile.id] || []}
+                      userProfile={allProfiles.find(p => p.userId === selectedEmployeeProfile.userId)}
                     />
                   ) : selectedPdi ? (
                     <div className="w-full xl:max-w-7xl mx-auto space-y-4 text-left">
@@ -3389,6 +2986,7 @@ export default function App() {
                         selectedEmployeeProfile.coordinatorName,
                       )}
                       checkins={checkinsCache[selectedEmployeeProfile.id] || []}
+                      userProfile={allProfiles.find(p => p.userId === selectedEmployeeProfile.userId)}
                     />
                   ) : selectedPdi ? (
                     <div className="w-full xl:max-w-7xl mx-auto space-y-4 text-left">
@@ -3664,7 +3262,39 @@ export default function App() {
       {activeTab !== "apresentacao" && (
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur-md border-t border-slate-900 z-50 elevation-16 pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-center justify-around h-[72px] w-full px-2">
-          {profile?.role === "medico" ? (
+          {customNavOrder.length > 0 ? (
+            <>
+              {customNavOrder.filter(id => isTabAllowed(id, profile?.role || "")).slice(0, mobileFixedCount).map(id => {
+                const mod = getNavModuleById(id);
+                if (!mod) return null;
+                const label = typeof mod.label === 'function' ? mod.label(profile?.role || "") : mod.label;
+                const shortLabel = mod.shortLabel ? (typeof mod.shortLabel === 'function' ? mod.shortLabel(profile?.role || "") : mod.shortLabel) : label.split(' ')[0];
+                return (
+                  <button
+                    key={mod.id}
+                    data-tour={mod.tourId}
+                    onClick={() => { setActiveTab(mod.id); setSelectedPdi(null); }}
+                    className="flex flex-col items-center justify-center w-full h-full space-y-1 relative"
+                  >
+                    <div className={`py-1 px-5 rounded-full transition-all duration-300 flex items-center justify-center ${activeTab === mod.id ? "bg-teal-500/15 text-teal-400 scale-110" : "text-slate-400 hover:text-slate-300 hover:bg-slate-800/30"}`}>
+                      <mod.icon className="w-[22px] h-[22px]" />
+                    </div>
+                    <span className={`text-[11px] font-medium tracking-wide transition-colors ${activeTab === mod.id ? "text-teal-400" : "text-slate-500"} text-center leading-tight`}>{shortLabel}</span>
+                  </button>
+                );
+              })}
+              <div className="relative flex flex-col items-center justify-center w-full h-full">
+                <button onClick={() => setShowMoreTabs(!showMoreTabs)} className="flex flex-col items-center justify-center w-full h-full space-y-1 relative">
+                  <div className={`py-1 px-5 rounded-full transition-all duration-300 flex items-center justify-center ${showMoreTabs ? "bg-teal-500/15 text-teal-400 scale-110" : "text-slate-400 hover:text-slate-300 hover:bg-slate-800/30"}`}>
+                    <MoreHorizontal className="w-[22px] h-[22px]" />
+                  </div>
+                  <span className={`text-[11px] font-medium tracking-wide transition-colors ${showMoreTabs ? "text-teal-400" : "text-slate-500"}`}>Mais</span>
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+            {profile?.role === "medico" && (
             <>
               {isTabAllowed("escala", profile.role) && (
                 <button
@@ -3758,7 +3388,8 @@ export default function App() {
                 </button>
               )}
             </>
-          ) : (
+          )}
+            {profile?.role !== "medico" && (
             <>
               {isTabAllowed("avisos", profile?.role || "") && (
                 <button
@@ -4178,6 +3809,8 @@ export default function App() {
               </span>
             </button>
           )}
+            </>
+          )}
 
           {profile && profile.role !== "medico" && (
             <div className="relative flex flex-col items-center justify-center w-full h-full">
@@ -4232,653 +3865,98 @@ export default function App() {
             </div>
 
             <div className="px-6 pt-2 pb-8 grid grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto mt-2">
-              {isTabAllowed("apresentacao", profile?.role || "") && (
-              <button
-                onClick={() => {
-                  setActiveTab("apresentacao");
-                  setShowMoreTabs(false);
-                }}
-                className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                  activeTab === "apresentacao"
-                    ? "bg-purple-500/15 border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.1)]"
-                    : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                }`}
-              >
-                <Rocket
-                  className={`w-6 h-6 ${activeTab === "apresentacao" ? "text-purple-400" : "text-slate-400"}`}
-                />
-                <span
-                  className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "apresentacao" ? "text-purple-400" : "text-slate-300"}`}
-                >
-                  Pitch
-                </span>
-              </button>
-              )}
+              {/* Menu Mobile Drawer Refatorado */}
+              {customNavOrder.length > 0 ? (
+                <>
+                  {customNavOrder.filter(id => isTabAllowed(id, profile?.role || "")).slice(4).map(id => {
+                    const mod = getNavModuleById(id);
+                    if (!mod) return null;
+                    const label = typeof mod.label === 'function' ? mod.label(profile?.role || "") : mod.label;
+                    return (
+                      <button
+                        key={mod.id}
+                        data-tour={mod.tourId}
+                        onClick={() => { setActiveTab(mod.id); setShowMoreTabs(false); setSelectedPdi(null); }}
+                        className={`col-span-1 flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
+                          activeTab === mod.id ? mod.bgClass || "bg-teal-500/15 border-teal-500/40" : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
+                        }`}
+                      >
+                        <mod.icon className={`w-6 h-6 ${mod.colorClass || (activeTab === mod.id ? 'text-teal-400' : 'text-slate-400')}`} />
+                        <span className="text-[11px] font-bold text-slate-300 tracking-wide text-center uppercase">
+                          {mod.shortLabel ? (typeof mod.shortLabel === 'function' ? mod.shortLabel(profile?.role || "") : mod.shortLabel) : label.split(' ')[0]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  <div className="col-span-3 mt-4 pt-4 border-t border-slate-800 flex justify-center">
+                    <button onClick={() => { setShowMoreTabs(false); setIsEditingMenu(true); }} className="flex items-center gap-2 text-teal-400 text-sm font-bold bg-teal-500/10 hover:bg-teal-500/20 px-6 py-3 rounded-xl transition-colors w-full justify-center">
+                      <Settings className="w-4 h-4" /> Personalizar Menu
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="col-span-3 flex flex-col gap-6 mt-2">
+                  {Array.from(
+                    new Set(
+                      ALL_NAV_MODULES
+                        .filter((m) => isTabAllowed(m.id, profile?.role || ""))
+                        .map((m) => m.category || "Outros")
+                    )
+                  ).map((category) => {
+                    const categoryModules = ALL_NAV_MODULES.filter(
+                      (m) => (m.category || "Outros") === category && isTabAllowed(m.id, profile?.role || "")
+                    );
+                    
+                    if (categoryModules.length === 0) return null;
+                    
+                    // Exclude the first N that might be in the fixed bottom bar
+                    const filteredModules = categoryModules.filter(mod => {
+                      const allAllowed = ALL_NAV_MODULES.filter(m => isTabAllowed(m.id, profile?.role || ""));
+                      const fixedCount = Math.min(mobileFixedCount, allAllowed.length);
+                      const fixedModules = allAllowed.slice(0, fixedCount);
+                      return !fixedModules.find(m => m.id === mod.id);
+                    });
 
-              {isTabAllowed("documentos", profile?.role || "") && profile?.role !== "medico" && (
-                <button
-                  onClick={() => {
-                    setActiveTab("documentos");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "documentos"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(45,212,191,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <FileText
-                    className={`w-6 h-6 ${activeTab === "documentos" ? "text-teal-400" : "text-slate-400"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "documentos" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Docs
-                  </span>
-                </button>
-              )}
+                    if (filteredModules.length === 0) return null;
 
-              {isTabAllowed("holerite", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("holerite");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "holerite"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(45,212,191,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <DollarSign
-                    className={`w-6 h-6 ${activeTab === "holerite" ? "text-teal-400" : "text-slate-400"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "holerite" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    {profile?.role === "medico" ? "Repasses" : "Financeiro"}
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("assessment", profile?.role || "") && profile?.role !== "colaborador" && profile?.role !== "medico" && (
-                <button
-                  onClick={() => {
-                    setActiveTab("assessment");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "assessment"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(45,212,191,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Activity
-                    className={`w-6 h-6 ${activeTab === "assessment" ? "text-teal-400" : "text-slate-400"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "assessment" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Avaliação
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("metrics", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("metrics");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "metrics"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(45,212,191,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <BarChart2
-                    className={`w-6 h-6 ${activeTab === "metrics" ? "text-teal-400" : "text-slate-400"}`}
-                  />
-                  <span
-                    className={`text-[9px] font-bold uppercase tracking-wider text-center leading-tight ${activeTab === "metrics" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    People<br/>Analytics
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("recrutamento", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("recrutamento");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "recrutamento"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(45,212,191,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Users
-                    className={`w-6 h-6 ${activeTab === "recrutamento" ? "text-teal-400" : "text-slate-400"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "recrutamento" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Seleção
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("vagas", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("vagas");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "vagas"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(45,212,191,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Briefcase
-                    className={`w-6 h-6 ${activeTab === "vagas" ? "text-teal-400" : "text-slate-400"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "vagas" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Vagas
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("inovacao", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("inovacao");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "inovacao"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Lightbulb
-                    className={`w-6 h-6 ${activeTab === "inovacao" ? "text-teal-400" : "text-teal-400/80"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "inovacao" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Inovação
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("suprimentos", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("suprimentos");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "suprimentos"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Package
-                    className={`w-6 h-6 ${activeTab === "suprimentos" ? "text-teal-400" : "text-teal-400/80"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "suprimentos" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Suprimentos
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("sadt", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("sadt");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "sadt"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Activity
-                    className={`w-6 h-6 ${activeTab === "sadt" ? "text-teal-400" : "text-teal-400/80"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "sadt" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    SADT
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("atendimento", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("atendimento");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "atendimento"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <HeartHandshake
-                    className={`w-6 h-6 ${activeTab === "atendimento" ? "text-teal-400" : "text-teal-400/80"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "atendimento" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Atendimento
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("caixa", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("caixa");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "caixa"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Activity
-                    className={`w-6 h-6 ${activeTab === "caixa" ? "text-teal-400" : "text-teal-500"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "caixa" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Caixa
-                  </span>
-                </button>
-              )}
-              
-              {isTabAllowed("tesouraria", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("tesouraria");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "tesouraria"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Landmark
-                    className={`w-6 h-6 ${activeTab === "tesouraria" ? "text-teal-400" : "text-teal-500"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "tesouraria" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Tesouraria
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("glosas", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("glosas");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "glosas"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <ShieldCheck
-                    className={`w-6 h-6 ${activeTab === "glosas" ? "text-teal-400" : "text-teal-500"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "glosas" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Glosas
-                  </span>
-                </button>
-              )}
-              
-
-              {isTabAllowed("faturamento", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("faturamento");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "faturamento"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <BarChart2
-                    className={`w-6 h-6 ${activeTab === "faturamento" ? "text-teal-400" : "text-teal-500"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "faturamento" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Faturamento
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("dre", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("dre");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "dre"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <FileText
-                    className={`w-6 h-6 ${activeTab === "dre" ? "text-teal-400" : "text-teal-450"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "dre" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    DRE Gerencial
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("kpis", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("kpis");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "kpis"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Activity
-                    className={`w-6 h-6 ${activeTab === "kpis" ? "text-teal-400" : "text-teal-450"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "kpis" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Cockpit KPIs
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("simulador_custos", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("simulador_custos");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "simulador_custos"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Sliders
-                    className={`w-6 h-6 ${activeTab === "simulador_custos" ? "text-teal-400" : "text-teal-450"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "simulador_custos" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Simulador
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("comercial", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("comercial");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "comercial"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <TrendingUp
-                    className={`w-6 h-6 ${activeTab === "comercial" ? "text-teal-400" : "text-teal-400/80"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "comercial" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Comercial
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("marketing", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("marketing");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "marketing"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Megaphone
-                    className={`w-6 h-6 ${activeTab === "marketing" ? "text-teal-400" : "text-teal-400/80"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "marketing" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Marketing
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("seguranca", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("seguranca");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "seguranca"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(20,184,166,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <HardHat
-                    className={`w-6 h-6 ${activeTab === "seguranca" ? "text-teal-400" : "text-teal-400/80"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center flex-col justify-center items-center ${activeTab === "seguranca" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Segurança
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("climate", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("climate");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "climate"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(45,212,191,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Heart
-                    className={`w-6 h-6 ${activeTab === "climate" ? "text-teal-400" : "text-slate-400"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "climate" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Clima
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("training", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("training");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "training"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(45,212,191,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <BookOpen
-                    className={`w-6 h-6 ${activeTab === "training" ? "text-teal-400" : "text-slate-400"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "training" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Cursos
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("feedback", profile?.role || "") && profile?.role !== "colaborador" && profile?.role !== "medico" && (
-                <button
-                  onClick={() => {
-                    setTargetFeedbackEmployee(undefined);
-                    setActiveTab("feedback");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "feedback"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(45,212,191,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-855"
-                  }`}
-                >
-                  <MessageSquare
-                    className={`w-6 h-6 ${activeTab === "feedback" ? "text-teal-400" : "text-slate-400"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "feedback" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Feedbacks
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("sesmt", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("sesmt");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "sesmt"
-                      ? "bg-purple-500/15 border-purple-500/40 shadow-[0_0_15px_rgba(147,51,234,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Shield
-                    className={`w-6 h-6 ${activeTab === "sesmt" ? "text-purple-400" : "text-slate-400"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "sesmt" ? "text-purple-400" : "text-slate-300"}`}
-                  >
-                    SESMT
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("juridico", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("juridico");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "juridico"
-                      ? "bg-[#693A32]/25 border-[#8D5B4F]/40 shadow-[0_0_15px_rgba(141,91,79,0.15)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Scale
-                    className={`w-6 h-6 ${activeTab === "juridico" ? "text-[#A78177]" : "text-slate-400"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "juridico" ? "text-[#A78177]" : "text-slate-300"}`}
-                  >
-                    Jurídico
-                  </span>
-                </button>
-              )}
-
-              {isTabAllowed("network", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("network");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "network"
-                      ? "bg-rose-500/15 border-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <HeartHandshake
-                    className={`w-6 h-6 ${activeTab === "network" ? "text-rose-400" : "text-slate-400"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "network" ? "text-rose-400" : "text-slate-300"}`}
-                  >
-                    Comunidade
-                  </span>
-                </button>
+                    return (
+                      <div key={category} className="col-span-3">
+                        <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-1 border-b border-slate-800 pb-2">
+                          {category}
+                        </h4>
+                        <div className="grid grid-cols-3 gap-3">
+                          {filteredModules.map((mod) => {
+                            const label = typeof mod.label === 'function' ? mod.label(profile?.role || "") : mod.label;
+                            return (
+                              <button
+                                key={mod.id}
+                                data-tour={mod.tourId}
+                                onClick={() => { setActiveTab(mod.id); setShowMoreTabs(false); setSelectedPdi(null); }}
+                                className={`col-span-1 flex flex-col items-center justify-center gap-2.5 p-3 rounded-2xl border transition-all duration-300 ${
+                                  activeTab === mod.id ? mod.bgClass || "bg-teal-500/15 border-teal-500/40" : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
+                                }`}
+                              >
+                                <mod.icon className={`w-6 h-6 ${mod.colorClass || (activeTab === mod.id ? 'text-teal-400' : 'text-slate-400')}`} />
+                                <span className="text-[10px] font-bold text-slate-300 tracking-wide text-center uppercase leading-tight line-clamp-2">
+                                  {mod.shortLabel ? (typeof mod.shortLabel === 'function' ? mod.shortLabel(profile?.role || "") : mod.shortLabel) : label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  
+                  <div className="col-span-3 mt-2 pt-4 border-t border-slate-800 flex justify-center">
+                    <button onClick={() => { setShowMoreTabs(false); setIsEditingMenu(true); }} className="flex items-center gap-2 text-teal-400 text-sm font-bold bg-teal-500/10 hover:bg-teal-500/20 px-6 py-3 rounded-xl transition-colors w-full justify-center">
+                      <Settings className="w-4 h-4" /> Personalizar Menu
+                    </button>
+                  </div>
+                </div>
               )}
 
 
-
-              {isTabAllowed("settings", profile?.role || "") && (
-                <button
-                  onClick={() => {
-                    setActiveTab("settings");
-                    setShowMoreTabs(false);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border transition-all duration-300 ${
-                    activeTab === "settings"
-                      ? "bg-teal-500/15 border-teal-500/40 shadow-[0_0_15px_rgba(45,212,191,0.1)]"
-                      : "bg-slate-800/40 border-slate-700 hover:border-slate-500 hover:bg-slate-800"
-                  }`}
-                >
-                  <Settings
-                    className={`w-6 h-6 ${activeTab === "settings" ? "text-teal-400" : "text-slate-400"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider text-center ${activeTab === "settings" ? "text-teal-400" : "text-slate-300"}`}
-                  >
-                    Configurações
-                  </span>
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -4968,6 +4046,22 @@ export default function App() {
       )}
 
       <PWAInstallPrompt />
+
+      {/* Edit Menu Modal */}
+      <EditMenuModal 
+        isOpen={isEditingMenu} 
+        onClose={() => setIsEditingMenu(false)} 
+        allowedTabs={ALL_NAV_MODULES.filter(m => isTabAllowed(m.id, profile?.role || "")).map(m => m.id)} 
+        initialOrder={customNavOrder} 
+        initialFixedCount={mobileFixedCount}
+        onSave={(newOrder, fixedCount) => {
+          setCustomNavOrder(newOrder);
+          setMobileFixedCount(fixedCount);
+          localStorage.setItem('hsf_custom_nav_order', JSON.stringify(newOrder));
+          // o useEffect já se encarrega de salvar mobileFixedCount
+        }} 
+        role={profile?.role || ""}
+      />
     </div>
   );
 }

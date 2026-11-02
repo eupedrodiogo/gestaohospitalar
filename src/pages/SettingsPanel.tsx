@@ -15,9 +15,11 @@ import {
   Sparkles,
   RefreshCw,
   X,
-  Target
+  Target,
+  ChevronDown
 } from 'lucide-react';
 import { auth } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 
 interface SettingsPanelProps {
   userName: string;
@@ -28,6 +30,7 @@ export default function SettingsPanel({ userName, userRole }: SettingsPanelProps
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'notifications' | 'security' | 'appearance'>('profile');
   const [showSavedMsg, setShowSavedMsg] = useState(false);
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     // Show the updates modal when the profile is accessed for the first time
@@ -53,11 +56,16 @@ export default function SettingsPanel({ userName, userRole }: SettingsPanelProps
   const handleSignOut = async () => {
     try {
       await auth.signOut();
+      await supabase.auth.signOut();
+      localStorage.removeItem("hsf_pdi_offline_mode");
+      localStorage.removeItem("hsf_active_tab");
       window.location.reload();
     } catch (error) {
       console.error(error);
     }
   };
+
+  const activeItem = menuItems.find(item => item.id === activeSubTab);
 
   return (
     <div className="h-full flex flex-col pt-8 md:pt-12 animate-in fade-in duration-500">
@@ -143,39 +151,67 @@ export default function SettingsPanel({ userName, userRole }: SettingsPanelProps
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-32">
-        <div className="flex flex-col md:flex-row gap-8 max-w-6xl mx-auto h-full">
-          {/* Menu Lateral das Configs */}
-          <div className="w-full md:w-64 shrink-0 flex flex-col gap-2">
-            {menuItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveSubTab(item.id)}
-                className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 ${
-                  activeSubTab === item.id
-                    ? 'bg-teal-500/10 border border-teal-500/20 shadow-[0_0_15px_rgba(45,212,191,0.05)]'
-                    : 'bg-slate-900/40 border border-transparent hover:bg-slate-800/60 hover:border-slate-700/50'
-                }`}
-              >
-                <div className={`p-2 rounded-lg ${activeSubTab === item.id ? 'bg-teal-500/20 text-teal-400' : 'bg-slate-800/80 text-slate-400'}`}>
-                  <item.icon className="w-5 h-5" />
+        <div className="flex flex-col gap-6 max-w-4xl mx-auto h-full">
+          
+          {/* Menu Suspenso (Dropdown) */}
+          <div className="relative z-50">
+            <button 
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="w-full md:w-[340px] flex items-center justify-between px-5 py-4 bg-slate-900/80 border border-slate-700/80 hover:border-teal-500/50 rounded-2xl shadow-lg backdrop-blur-sm transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-teal-500/20 text-teal-400">
+                  {activeItem && <activeItem.icon className="w-6 h-6" />}
                 </div>
-                <div className="flex flex-col items-start text-left">
-                  <span className={`text-sm font-bold ${activeSubTab === item.id ? 'text-teal-400' : 'text-slate-300'}`}>
-                    {item.label}
-                  </span>
+                <div className="text-left">
+                  <span className="block text-sm font-bold text-slate-100">{activeItem?.label}</span>
+                  <span className="block text-xs text-slate-400 font-medium mt-0.5">{activeItem?.desc}</span>
                 </div>
-              </button>
-            ))}
+              </div>
+              <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
 
-            <div className="mt-8 pt-6 border-t border-slate-800">
-              <button 
-                onClick={handleSignOut}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 bg-red-400/5 hover:bg-red-400/10 transition-colors"
-               >
-                <LogOut className="w-5 h-5" />
-                <span className="text-sm font-bold">Encerrar Sessão</span>
-              </button>
-            </div>
+            {isDropdownOpen && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsDropdownOpen(false)}
+                ></div>
+                <div className="absolute top-full left-0 mt-3 w-full md:w-[340px] bg-slate-900 border border-slate-700/80 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="p-2 flex flex-col gap-1">
+                    {menuItems.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setActiveSubTab(item.id);
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                          activeSubTab === item.id
+                            ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
+                            : 'hover:bg-slate-800/80 text-slate-300 border border-transparent'
+                        }`}
+                      >
+                        <item.icon className="w-5 h-5" />
+                        <div className="text-left">
+                          <span className="block text-sm font-bold">{item.label}</span>
+                        </div>
+                      </button>
+                    ))}
+                    
+                    <div className="mt-2 pt-2 border-t border-slate-800">
+                      <button 
+                        onClick={handleSignOut}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-400/10 hover:text-red-300 transition-colors"
+                      >
+                        <LogOut className="w-5 h-5" />
+                        <span className="text-sm font-bold">Encerrar Sessão</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Painel de Conteúdo das Configs */}

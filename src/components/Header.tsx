@@ -21,11 +21,12 @@ import {
   Package
 } from "lucide-react";
 import { translations, Language } from "../utils/translations";
+import { useTheme } from "../contexts/ThemeContext";
 
 interface HeaderProps {
   currentLang: Language;
-  currentRole: "colaborador" | "lider" | "rh" | "ti" | "inovacao" | "sadt" | "atendimento" | "financeiro" | "custos" | "faturamento" | "comercial" | "marketing" | "seguranca" | "diretor_administrativo" | "diretor_geral" | "sesmt" | "juridico" | "suprimentos" | "apresentador";
-  onRoleChange: (role: "colaborador" | "lider" | "rh" | "ti" | "inovacao" | "sadt" | "atendimento" | "financeiro" | "custos" | "faturamento" | "comercial" | "marketing" | "seguranca" | "diretor_administrativo" | "diretor_geral" | "sesmt" | "juridico" | "suprimentos" | "apresentador") => void;
+  currentRole: "colaborador" | "lider" | "rh" | "ti" | "inovacao" | "sadt" | "atendimento" | "financeiro" | "custos" | "faturamento" | "comercial" | "marketing" | "seguranca" | "diretor_administrativo" | "diretor_geral" | "sesmt" | "juridico" | "suprimentos" | "apresentador" | "master" | "medico";
+  onRoleChange: (role: "colaborador" | "lider" | "rh" | "ti" | "inovacao" | "sadt" | "atendimento" | "financeiro" | "custos" | "faturamento" | "comercial" | "marketing" | "seguranca" | "diretor_administrativo" | "diretor_geral" | "sesmt" | "juridico" | "suprimentos" | "apresentador" | "master" | "medico") => void;
   currentCycle: string;
   onCycleChange: (cycle: string) => void;
   unreadCount: number;
@@ -33,8 +34,8 @@ interface HeaderProps {
   onShowNotif: () => void;
   isOfflineDemo?: boolean;
   onExitOfflineDemo?: () => void;
-  currentTheme: "hsf" | "dark" | "light" | "hsf-dark" | "dark-hsf";
-  setCurrentTheme: (theme: "hsf" | "dark" | "light" | "hsf-dark" | "dark-hsf") => void;
+  currentTheme?: "hsf" | "dark" | "light" | "hsf-dark" | "dark-hsf";
+  setCurrentTheme?: (theme: "hsf" | "dark" | "light" | "hsf-dark" | "dark-hsf") => void;
   onLogout?: () => void;
 }
 
@@ -49,21 +50,28 @@ export default function Header({
   onShowNotif,
   isOfflineDemo = false,
   onExitOfflineDemo,
-  currentTheme,
-  setCurrentTheme,
   onLogout,
 }: HeaderProps) {
+  const { currentTheme, setCurrentTheme } = useTheme();
   const t = translations[currentLang];
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
+  const [showSecretThemes, setShowSecretThemes] = useState(false);
   
-  const themeOptions = [
-    { value: 'hsf', label: 'Cores HSF', icon: '🏥' },
-    { value: 'hsf-dark', label: 'Fundo Escuro HSF', icon: '🌙' },
-    { value: 'dark-hsf', label: 'Tech Dark + HSF', icon: '🛸' },
+  const publicThemeOptions = [
     { value: 'light', label: 'Claro Padrão', icon: '☀️' },
     { value: 'dark', label: 'Escuro Padrão', icon: '🌌' },
   ];
+
+  const secretThemeOptions = [
+    { value: 'hsf', label: 'Cores HSF', icon: '🏥' },
+    { value: 'hsf-dark', label: 'Fundo Escuro HSF', icon: '🌙' },
+    { value: 'dark-hsf', label: 'Tech Dark + HSF', icon: '🛸' },
+  ];
+
+  const themeOptions = showSecretThemes 
+    ? [...publicThemeOptions, ...secretThemeOptions] 
+    : publicThemeOptions;
 
   const roles = [
     { id: "colaborador", label: t.roleColaborador },
@@ -294,15 +302,35 @@ export default function Header({
           <div className="flex items-center gap-4">
             {/* Logo */}
             <div
-              className="flex transition-all duration-300 hover:scale-[1.02] mb-1 bg-true-white px-3 py-1.5 rounded-2xl shadow-sm"
-              style={{ backgroundColor: "#ffffff" }}
+              className={`flex items-center justify-center transition-all duration-300 hover:scale-[1.02] ${
+                currentTheme?.includes("hsf") 
+                  ? "bg-white shadow-sm px-2 py-1 md:px-3 md:py-1.5 rounded-xl md:rounded-2xl" 
+                  : "px-1"
+              }`}
+              style={currentTheme?.includes("hsf") ? { backgroundColor: "#ffffff" } : {}}
             >
-              <img
-                src="https://hospitalsaofranciscorj.com.br/wp-content/uploads/2025/07/Logo-HSF-SELO-0NA1.png"
-                alt="Hospital São Francisco"
-                className="h-9 md:h-11 w-auto object-contain"
-                referrerPolicy="no-referrer"
-              />
+              {currentTheme?.includes("hsf") ? (
+                <>
+                  <img
+                    src="https://hospitalsaofranciscorj.com.br/wp-content/uploads/2022/04/Logo-HSF-Mini-color-400x250.png"
+                    alt="Hospital São Francisco"
+                    className="h-8 md:hidden w-auto object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                  <img
+                    src="https://hospitalsaofranciscorj.com.br/wp-content/uploads/2025/07/Logo-HSF-SELO-0NA1.png"
+                    alt="Hospital São Francisco"
+                    className="hidden md:block h-9 lg:h-11 w-auto object-contain p-1"
+                    referrerPolicy="no-referrer"
+                  />
+                </>
+              ) : (
+                <img
+                  src={currentTheme === 'light' ? '/logo_light.png' : '/logo_dark.png'}
+                  alt="Gestão Hospitalar"
+                  className="h-10 sm:h-12 w-auto object-contain drop-shadow-md"
+                />
+              )}
             </div>
             <div>
               {isOfflineDemo && (
@@ -339,8 +367,12 @@ export default function Header({
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setIsThemeDropdownOpen(false)}></div>
                   <div className="absolute right-0 mt-2 w-52 bg-slate-900/95 backdrop-blur-xl border border-slate-700 shadow-2xl rounded-2xl overflow-hidden py-2 z-50 transform origin-top-right transition-all">
-                    <div className="px-4 py-2 border-b border-slate-800 mb-1">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Aparência</span>
+                    <div 
+                      className="px-4 py-2 border-b border-slate-800 mb-1"
+                      onDoubleClick={() => setShowSecretThemes(true)}
+                      title="Duplo clique para opções avançadas"
+                    >
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest select-none cursor-default">Aparência</span>
                     </div>
                     {themeOptions.map((option) => (
                       <button
@@ -379,122 +411,19 @@ export default function Header({
               </select>
             </div>
 
-            {/* Simulation Role Switcher Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowRoleDropdown(!showRoleDropdown)}
-                className="ripple font-sans flex items-center gap-2 bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded-lg transition-colors border border-teal-500/30 shadow-[0_0_15px_rgba(45,212,191,0.1)]"
-              >
-                <ArrowLeftRight className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">{t.viewRole}:</span>
-                <span>
-                  {currentRole === "colaborador"
-                    ? "Pedro"
-                    : currentRole === "lider"
-                      ? "Rafael"
-                      : currentRole === "rh"
-                        ? "Márcia"
-                        : currentRole === "inovacao"
-                          ? "Inov"
-                          : currentRole === "sadt"
-                            ? "Daniela"
-                            : currentRole === "atendimento"
-                              ? "Andréa"
-                              : currentRole === "financeiro"
-                                ? "Johnny"
-                              : currentRole === "faturamento"
-                                ? "Luis"
-                                : currentRole === "custos"
-                                  ? "Victor"
-                                  : currentRole === "comercial"
-                                    ? "Ingrid"
-                                    : currentRole === "marketing"
-                                      ? "Bruno"
-                                      : currentRole === "seguranca"
-                                        ? "Samuel"
-                                        : currentRole === "diretor_administrativo"
-                                          ? "Jociliano"
-                                          : currentRole === "diretor_geral"
-                                            ? "Carlos"
-                                            : currentRole === "sesmt"
-                                              ? "Dr. Lucas"
-                                              : currentRole === "juridico"
-                                                ? "Dr. Alexandre"
-                                                : currentRole === "apresentador"
-                                                  ? "Pedro Diogo"
-                                                  : "João"}
+            {/* Active User Profile */}
+            <div className="flex items-center gap-2.5 pl-2 sm:pl-4 border-l border-slate-800">
+              <div className="hidden sm:flex flex-col items-end justify-center">
+                <span className="text-[11px] font-bold text-slate-200 leading-tight">
+                  {userName || getRoleDetails(currentRole).name}
                 </span>
-              </button>
-              {showRoleDropdown && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setShowRoleDropdown(false)}
-                  ></div>
-                  <div className="fixed inset-x-2 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto mt-3 w-auto sm:w-[580px] md:w-[750px] bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl rounded-2xl shadow-xl dark:shadow-2xl border border-[#8D5B4F]/20 dark:border-slate-800/90 z-50 py-3 animate-in fade-in slide-in-from-top-2">
-                    <div className="px-4 pb-2.5 mb-2.5 border-b border-[#8D5B4F]/10 dark:border-slate-800/60 flex flex-col gap-0.5">
-                      <div className="text-[11px] font-bold text-[#693A32] dark:text-teal-400 uppercase tracking-widest flex items-center gap-1.5">
-                        <ArrowLeftRight className="w-3.5 h-3.5" />
-                        Simulação de Perfis HSF
-                      </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                        Alterne entre os médicos, líderes, administradores e colaboradores do hospital para simular suas visões do sistema.
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 px-3 max-h-[60vh] overflow-y-auto scrollbar-thin">
-                      {roles.map((r) => {
-                        const info = getRoleDetails(r.id);
-                        const isSelected = currentRole === r.id;
-                        return (
-                          <button
-                            key={r.id}
-                            onClick={() => {
-                              onRoleChange(r.id);
-                              setShowRoleDropdown(false);
-                            }}
-                            className={`flex items-start text-left p-2.5 rounded-xl border text-xs transition-all duration-200 cursor-pointer ${
-                              isSelected
-                                ? "bg-[#693A32] border-[#693A32] shadow-md relative overflow-hidden ring-1 ring-black/5"
-                                : `border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 opacity-80 hover:opacity-100`
-                            }`}
-                          >
-                            <div className="flex flex-col gap-2 items-start w-full">
-                              <div className="flex gap-2.5 items-center w-full">
-                                <div className={`p-1.5 rounded-lg shrink-0 flex items-center justify-center ${
-                                  isSelected
-                                    ? "bg-white/20 text-white backdrop-blur-sm shadow-inner"
-                                    : `bg-slate-100 dark:bg-slate-800/50 ${
-                                        info.isClinical ? "text-teal-500 dark:text-teal-400" : "text-[#A78177]"
-                                      }`
-                                }`}>
-                                  {info.icon}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className={`font-bold tracking-tight truncate leading-tight ${isSelected ? "text-white drop-shadow-sm" : "text-slate-700 dark:text-slate-300"}`}>
-                                    {info.name}
-                                  </div>
-                                </div>
-                                {isSelected && (
-                                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 self-center animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.8)]"></div>
-                                )}
-                              </div>
-                              <div className="flex flex-col w-full">
-                                <div className={`text-[10px] font-medium truncate mb-0.5 ${isSelected ? "text-white/90" : "text-slate-500 dark:text-slate-400"}`}>
-                                  {r.label}
-                                </div>
-                                <div className={`text-[9px] truncate ${isSelected ? "text-white/70" : "text-slate-400 dark:text-slate-500"}`}>
-                                  {info.dept}
-                                </div>
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
-              )}
+                <span className="text-[9px] font-medium text-slate-500 uppercase tracking-wider">
+                  {currentRole === 'master' ? 'Acesso Master' : getRoleDetails(currentRole).dept}
+                </span>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-teal-400 border border-slate-700/50 shadow-sm shrink-0">
+                {currentRole === 'master' ? <Crown className="w-4 h-4" /> : getRoleDetails(currentRole).icon}
+              </div>
             </div>
 
             {/* Notifications Button */}

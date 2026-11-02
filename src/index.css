@@ -29,6 +29,13 @@
   --theme-black: #000000;
   --theme-text-white: #ffffff;
   --theme-card-opacity: 0.95;
+
+  /* Chat Colors - WhatsApp Dark */
+  --chat-bg: #0b141a;
+  --chat-bubble-out: #005c4b;
+  --chat-bubble-in: #202c33;
+  --chat-text-out: #e9edef;
+  --chat-text-in: #e9edef;
 }
 
 :root[data-theme="light"] {
@@ -57,6 +64,13 @@
   
   --theme-text-white: #0f172a;
   --theme-card-opacity: 1;
+
+  /* Chat Colors - WhatsApp Light */
+  --chat-bg: #efeae2;
+  --chat-bubble-out: #d9fdd3;
+  --chat-bubble-in: #ffffff;
+  --chat-text-out: #111b21;
+  --chat-text-in: #111b21;
 }
 
 :root[data-theme="hsf"] {
@@ -85,6 +99,13 @@
   
   --theme-text-white: #ffffff;
   --theme-card-opacity: 1;
+
+  /* Chat Colors - WhatsApp Light matching HSF tones */
+  --chat-bg: #efeae2;
+  --chat-bubble-out: #d9fdd3;
+  --chat-bubble-in: #ffffff;
+  --chat-text-out: #111b21;
+  --chat-text-in: #111b21;
 }
 
 :root[data-theme="hsf-dark"] {
@@ -113,6 +134,13 @@
   
   --theme-text-white: #ffffff;
   --theme-card-opacity: 0.95;
+
+  /* Chat Colors - WhatsApp Dark matching HSF Dark tones */
+  --chat-bg: #2b1710;
+  --chat-bubble-out: #5c372a;
+  --chat-bubble-in: #3c231a;
+  --chat-text-out: #ebe5e3;
+  --chat-text-in: #ebe5e3;
 }
 
 :root[data-theme="dark-hsf"] {
@@ -142,6 +170,13 @@
   
   --theme-text-white: #ffffff;
   --theme-card-opacity: 0.95;
+
+  /* Chat Colors - Tech Dark with HSF accents */
+  --chat-bg: #0b141a;
+  --chat-bubble-out: #6e4336;
+  --chat-bubble-in: #1e293b;
+  --chat-text-out: #ffffff;
+  --chat-text-in: #ffffff;
 }
 
 @theme {
