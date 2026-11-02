@@ -57,7 +57,7 @@ export function EditMenuModal({ isOpen, onClose, allowedTabs, initialOrder, init
             </button>
           </div>
           
-          <div className="flex items-center justify-between bg-slate-950/50 p-3 rounded-xl border border-slate-800/80">
+          <div className="flex md:hidden items-center justify-between bg-slate-950/50 p-3 rounded-xl border border-slate-800/80">
             <span className="text-xs font-medium text-slate-300">Botões fixos no celular:</span>
             <div className="flex gap-1">
               {[2, 3, 4, 5].map(num => (
@@ -102,7 +102,7 @@ export function EditMenuModal({ isOpen, onClose, allowedTabs, initialOrder, init
                   </span>
 
                   {isMobileBottomNav && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-teal-400/80 px-2 py-0.5 rounded-full bg-teal-400/10 border border-teal-400/20">
+                    <span className="md:hidden text-[10px] font-bold uppercase tracking-wider text-teal-400/80 px-2 py-0.5 rounded-full bg-teal-400/10 border border-teal-400/20">
                       Fixo Mobile
                     </span>
                   )}
