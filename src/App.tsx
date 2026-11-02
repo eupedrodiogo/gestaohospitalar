@@ -2309,33 +2309,6 @@ export default function App() {
 
           {/* Menu Desktop Refatorado e Agrupado */}
           <div className="flex-1 min-h-0 flex flex-col gap-1 overflow-y-auto scrollbar-none pb-4 relative px-2">
-            {customNavOrder.length > 0 ? (
-              <div className="flex flex-col gap-1 pt-2">
-                {customNavOrder.filter(id => isTabAllowed(id, profile?.role || "")).map(id => {
-                  const mod = getNavModuleById(id);
-                  if (!mod) return null;
-                  const label = typeof mod.label === 'function' ? mod.label(profile?.role || "") : mod.label;
-                  return (
-                    <button
-                      key={mod.id}
-                      data-tour={mod.tourId}
-                      onClick={() => { setActiveTab(mod.id); setSelectedPdi(null); }}
-                      className={`w-full flex items-center ${isSidebarExpanded ? "justify-start px-3" : "justify-center px-0"} gap-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                        activeTab === mod.id
-                          ? mod.bgClass || "bg-teal-500/10 text-teal-400 border border-teal-500/30"
-                          : "text-slate-400 hover:text-slate-100 hover:bg-slate-900/40 border border-transparent"
-                      }`}
-                      title={!isSidebarExpanded ? label : undefined}
-                    >
-                      <mod.icon className={`w-[20px] h-[20px] shrink-0 ${mod.colorClass || (activeTab === mod.id ? 'text-teal-400' : '')}`} />
-                      {isSidebarExpanded && (
-                        <span className="whitespace-nowrap tracking-tighter">{label}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
               <div className="flex flex-col gap-1 pt-2">
                 {Array.from(
                   new Set(
@@ -2346,8 +2319,13 @@ export default function App() {
                 ).map((category) => {
                   const categoryModules = ALL_NAV_MODULES.filter(
                     (m) => (m.category || "Outros") === category && isTabAllowed(m.id, profile?.role || "")
-                  );
-                  
+                  ).sort((a, b) => {
+                    if (customNavOrder.length === 0) return 0;
+                    const ia = customNavOrder.indexOf(a.id);
+                    const ib = customNavOrder.indexOf(b.id);
+                    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+                  });
+
                   if (categoryModules.length === 0) return null;
 
                   return (
@@ -2387,7 +2365,6 @@ export default function App() {
                   );
                 })}
               </div>
-            )}
             
             <button 
               onClick={() => setIsEditingMenu(true)} 
