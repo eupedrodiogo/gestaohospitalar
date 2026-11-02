@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { translations, Language } from '../utils/translations';
 import { UserProfile } from '../types';
-import { Mail, User, Shield, Briefcase, ChevronRight, AlertCircle, ExternalLink, RefreshCw, Palette, Key } from 'lucide-react';
+import { Mail, User, Shield, Briefcase, ChevronRight, AlertCircle, ExternalLink, RefreshCw, Palette, Key, Eye, EyeOff, Lock } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface LoginScreenProps {
@@ -28,6 +28,8 @@ export default function LoginScreen({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
   const [showEasterEgg, setShowEasterEgg] = useState(false);
   const [clickCount, setClickCount] = useState(0);
 
@@ -84,8 +86,23 @@ export default function LoginScreen({
   };
 
   return (
-    <div id="login-container" className="min-h-[85vh] flex flex-col items-center justify-center p-4 sm:p-6 select-none bg-slate-950 relative">
-      
+    <div id="login-container" className="min-h-[85vh] flex flex-col items-center justify-center p-4 sm:p-6 select-none bg-slate-950 relative overflow-hidden">
+      {/* Ambient background */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="absolute -top-32 -left-32 w-[28rem] h-[28rem] rounded-full bg-teal-500/15 blur-3xl animate-pulse" style={{ animationDuration: '7s' }}></div>
+        <div className="absolute -bottom-40 -right-32 w-[32rem] h-[32rem] rounded-full bg-indigo-500/10 blur-3xl animate-pulse" style={{ animationDuration: '9s' }}></div>
+        <div
+          className="absolute inset-0 opacity-[0.07]"
+          style={{
+            backgroundImage: 'linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px)',
+            backgroundSize: '44px 44px',
+            color: '#94a3b8',
+            maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
+            WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
+          }}
+        ></div>
+      </div>
+
       {/* Premium Theme Selector */}
       <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
         <div className="relative">
@@ -130,7 +147,7 @@ export default function LoginScreen({
         </div>
       </div>
 
-      <div className="w-full max-w-lg card-gradient rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden transform transition-all glow-border mt-8">
+      <div className="w-full max-w-md card-gradient rounded-3xl border border-slate-800 shadow-2xl shadow-black/40 relative overflow-hidden transform transition-all glow-border mt-8 backdrop-blur-xl">
         {/* Banner */}
         <div className="bg-slate-900/50 p-6 text-center space-y-3 relative border-b border-slate-800">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-20 active-glow pointer-events-none"></div>
@@ -176,7 +193,8 @@ export default function LoginScreen({
               </>
             )}
           </div>
-          <p className="text-xs text-slate-400 font-sans max-w-xs mx-auto mt-4">{t.loginSubtitle}</p>
+          <h1 className="text-lg font-semibold text-slate-100 tracking-tight mt-5">Bem-vindo de volta</h1>
+          <p className="text-xs text-slate-400 font-sans max-w-xs mx-auto leading-relaxed">{t.loginSubtitle}</p>
         </div>
 
         {/* Input Form */}
@@ -273,7 +291,8 @@ export default function LoginScreen({
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="ex: pdsmello"
-                className="w-full bg-slate-950/60 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm focus:border-teal-500 focus:ring-0 text-slate-200 placeholder-slate-650"
+                autoComplete="username"
+                className="w-full bg-slate-950/60 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm outline-none transition-all duration-200 hover:border-slate-700 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/15 text-slate-200 placeholder-slate-650"
               />
             </div>
           </div>
@@ -286,14 +305,31 @@ export default function LoginScreen({
             <div className="relative">
               <Key className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyUp={(e) => setCapsLock(e.getModifierState('CapsLock'))}
+                onBlur={() => setCapsLock(false)}
+                autoComplete="current-password"
                 placeholder="Sua senha de acesso"
-                className="w-full bg-slate-950/60 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm focus:border-teal-500 focus:ring-0 text-slate-200 placeholder-slate-650"
+                className="w-full bg-slate-950/60 border border-slate-800 rounded-xl py-3 pl-11 pr-11 text-sm outline-none transition-all duration-200 hover:border-slate-700 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/15 text-slate-200 placeholder-slate-650"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-3 top-3 p-0.5 text-slate-500 hover:text-teal-400 transition-colors"
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
+            {capsLock && (
+              <p className="text-[11px] text-amber-400 flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5" /> Caps Lock está ativado
+              </p>
+            )}
           </div>
 
           <button
@@ -311,10 +347,14 @@ export default function LoginScreen({
             </span>
             <ChevronRight className="w-4 h-4 relative z-10 text-teal-300/70 group-hover:text-white group-hover:translate-x-1 transition-all duration-300" />
           </button>
+
+          <p className="flex items-center justify-center gap-1.5 text-[10px] text-slate-500 pt-1">
+            <Lock className="w-3 h-3" /> Conexão criptografada · Acesso restrito a colaboradores
+          </p>
         </form>
       </div>
 
-      <div className="w-full flex justify-center pb-8 pt-12">
+      <div className="w-full flex justify-center pb-8 pt-12 relative">
         <div className="flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-opacity duration-500">
           <div className="h-px w-16 bg-gradient-to-r from-transparent via-slate-500/30 to-transparent mb-4"></div>
           <p className="text-[9px] uppercase tracking-[0.25em] text-slate-500 font-semibold mb-1.5">
