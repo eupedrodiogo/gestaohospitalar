@@ -28,6 +28,20 @@ export default function LoginScreen({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
+  const [showEasterEgg, setShowEasterEgg] = useState(false);
+  const [clickCount, setClickCount] = useState(0);
+
+  const handleLogoClick = () => {
+    setClickCount(prev => {
+      const newCount = prev + 1;
+      if (newCount >= 5) {
+        setShowEasterEgg(true);
+        return 0; // reset
+      }
+      return newCount;
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim()) return;
@@ -45,14 +59,22 @@ export default function LoginScreen({
   ];
 
   const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
+  const [showSecretThemes, setShowSecretThemes] = useState(false);
 
-  const themeOptions = [
-    { value: 'hsf', label: 'Cores HSF (Padrão)', icon: '🏥' },
-    { value: 'hsf-dark', label: 'HSF Fundo Escuro', icon: '🌙' },
-    { value: 'dark-hsf', label: 'Tech Dark + HSF Accent', icon: '🛸' },
+  const publicThemeOptions = [
     { value: 'light', label: 'Modo Claro', icon: '☀️' },
     { value: 'dark', label: 'Tech Dark', icon: '🌌' },
   ];
+
+  const secretThemeOptions = [
+    { value: 'hsf', label: 'Cores HSF (Padrão)', icon: '🏥' },
+    { value: 'hsf-dark', label: 'HSF Fundo Escuro', icon: '🌙' },
+    { value: 'dark-hsf', label: 'Tech Dark + HSF Accent', icon: '🛸' },
+  ];
+
+  const themeOptions = showSecretThemes 
+    ? [...publicThemeOptions, ...secretThemeOptions] 
+    : publicThemeOptions;
 
   const toggleThemeDropdown = () => setIsThemeDropdownOpen(!isThemeDropdownOpen);
 
@@ -83,8 +105,12 @@ export default function LoginScreen({
             <>
               <div className="fixed inset-0 z-40" onClick={() => setIsThemeDropdownOpen(false)}></div>
               <div className="absolute bottom-full right-0 mb-2 w-48 sm:w-56 bg-slate-900/95 backdrop-blur-xl border border-slate-800 shadow-2xl rounded-2xl overflow-hidden py-1 z-50 transform origin-bottom-right transition-all">
-                <div className="px-4 py-2 border-b border-slate-800 mb-1">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Identidade Visual</span>
+                <div 
+                  className="px-4 py-2 border-b border-slate-800 mb-1" 
+                  onDoubleClick={() => setShowSecretThemes(true)}
+                  title="Duplo clique para opções avançadas"
+                >
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest select-none cursor-default">Identidade Visual</span>
                 </div>
                 {themeOptions.map((option) => (
                   <button
@@ -109,28 +135,48 @@ export default function LoginScreen({
         <div className="bg-slate-900/50 p-6 text-center space-y-3 relative border-b border-slate-800">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-20 active-glow pointer-events-none"></div>
           <div className="flex justify-center transition-all duration-300 hover:scale-[1.02]">
-            {/* Mobile Logo */}
-            <div className="sm:hidden transition-all duration-300 hover:scale-[1.02] mb-1 bg-white p-1.5 rounded-xl shadow-sm" style={{ backgroundColor: '#ffffff' }}>
-              <img 
-                src="https://hospitalsaofranciscorj.com.br/wp-content/uploads/2022/04/Logo-HSF-Mini-color-400x250.png" 
-                alt="Hospital São Francisco"
-                className="h-10 w-auto object-contain"
-                referrerPolicy="no-referrer"
-              />
-            </div>
+            {currentTheme === 'light' || currentTheme === 'dark' ? (
+              <div 
+                onClick={handleLogoClick}
+                className={`cursor-pointer transition-all duration-300 hover:scale-[1.02] mb-1 ${currentTheme === 'light' ? 'bg-slate-100 shadow-sm' : 'bg-slate-900 shadow-xl border border-slate-700/50'} px-2 py-1 sm:px-4 sm:py-2 rounded-2xl mx-auto flex items-center justify-center h-14 sm:h-16 overflow-hidden`}
+              >
+                <img 
+                  src={currentTheme === 'light' ? '/logo_light.png' : '/logo_dark.png'} 
+                  alt="Gestão Hospitalar"
+                  className="h-12 sm:h-14 w-auto object-contain rounded-xl mix-blend-multiply dark:mix-blend-normal"
+                />
+              </div>
+            ) : (
+              <>
+                {/* Mobile Logo */}
+                <div 
+                  onClick={handleLogoClick}
+                  className="cursor-pointer sm:hidden transition-all duration-300 hover:scale-[1.02] mb-1 bg-white p-1.5 rounded-xl shadow-sm" style={{ backgroundColor: '#ffffff' }}
+                >
+                  <img 
+                    src="https://hospitalsaofranciscorj.com.br/wp-content/uploads/2022/04/Logo-HSF-Mini-color-400x250.png" 
+                    alt="Hospital São Francisco"
+                    className="h-10 w-auto object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
 
-            {/* Desktop Logo */}
-            <div className="hidden sm:flex bg-white px-4 py-2 rounded-2xl max-w-[340px] mx-auto shadow-sm items-center justify-center h-14 overflow-hidden" style={{ backgroundColor: '#ffffff' }}>
-              <img 
-                src="https://hospitalsaofranciscorj.com.br/wp-content/uploads/2025/07/Logo-HSF-SELO-0NA1.png" 
-                alt="Hospital São Francisco"
-                className="h-10 w-auto object-contain"
-                referrerPolicy="no-referrer"
-              />
-            </div>
+                {/* Desktop Logo */}
+                <div 
+                  onClick={handleLogoClick}
+                  className="cursor-pointer hidden sm:flex bg-white px-4 py-2 rounded-2xl max-w-[340px] mx-auto shadow-sm items-center justify-center h-14 overflow-hidden" style={{ backgroundColor: '#ffffff' }}
+                >
+                  <img 
+                    src="https://hospitalsaofranciscorj.com.br/wp-content/uploads/2025/07/Logo-HSF-SELO-0NA1.png" 
+                    alt="Hospital São Francisco"
+                    className="h-10 w-auto object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              </>
+            )}
           </div>
-          <h2 className="font-display font-semibold text-xl tracking-tight text-white">{t.loginTitle}</h2>
-          <p className="text-xs text-slate-400 font-sans max-w-xs mx-auto">{t.loginSubtitle}</p>
+          <p className="text-xs text-slate-400 font-sans max-w-xs mx-auto mt-4">{t.loginSubtitle}</p>
         </div>
 
         {/* Input Form */}
@@ -171,45 +217,48 @@ export default function LoginScreen({
             </div>
           )}
 
-          {/* Quick Test Login Buttons */}
-          <div className="flex flex-wrap gap-2 mb-6 p-4 rounded-xl border border-teal-500/20 bg-teal-500/5">
-            <div className="w-full text-[10px] font-bold text-teal-400 uppercase tracking-wider mb-1">
-              Acesso Rápido de Teste
+          {/* Quick Test Login Buttons - Easter Egg */}
+          {showEasterEgg && (
+            <div className="flex flex-wrap gap-2 mb-6 p-4 rounded-xl border border-teal-500/20 bg-teal-500/5">
+              <div className="w-full text-[10px] font-bold text-teal-400 uppercase tracking-wider mb-1">
+                Acesso Rápido de Teste
+              </div>
+              {[
+                { id: 'colaborador', label: 'Pedro (Almox.)', username: 'pedro' },
+                { id: 'lider', label: 'Rafael (Coord.)', username: 'rafael' },
+                { id: 'rh', label: 'Márcia (RH)', username: 'marcia' },
+                { id: 'ti', label: 'João (TI)', username: 'joao' },
+                { id: 'inovacao', label: 'Inovação', username: 'inovacao' },
+                { id: 'sadt', label: 'Daniela (SADT)', username: 'daniela' },
+                { id: 'atendimento', label: 'Andréa (Atend.)', username: 'andrea' },
+                { id: 'financeiro', label: 'Johnny (Financ.)', username: 'johnny' },
+                { id: 'faturamento', label: 'Luis (Fatur.)', username: 'luis' },
+                { id: 'custos', label: 'Victor (Custos)', username: 'victor' },
+                { id: 'comercial', label: 'Ingrid (Comerc.)', username: 'ingrid' },
+                { id: 'marketing', label: 'Bruno (Mkt)', username: 'bruno' },
+                { id: 'seguranca', label: 'Samuel (Seg. Trab.)', username: 'samuel' },
+                { id: 'sesmt', label: 'Dr. Lucas (Med. Trab.)', username: 'lucas' },
+                { id: 'juridico', label: 'Dr. Alexandre (Comp.)', username: 'alexandre' },
+                { id: 'diretor_administrativo', label: 'Jociliano (Dir. Adm.)', username: 'jociliano' },
+                { id: 'diretor_geral', label: 'Carlos (Geral)', username: 'carlos' },
+                { id: 'suprimentos', label: 'Luiza (Suprim.)', username: 'luiza' },
+                { id: 'engenharia_clinica', label: 'Marcelo (Eng. Clín.)', username: 'marcelo' },
+                { id: 'apresentador', label: 'Pedro (Apresentador)', username: 'pedrodiogo' }
+              ].map((role, idx) => (
+                <button
+                  key={`${role.id}-${idx}`}
+                  type="button"
+                  onClick={() => {
+                    setUsername(role.username);
+                    setPassword('senha123'); // senha padrão que a TI deve cadastrar
+                  }}
+                  className="flex-1 min-w-[70px] bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-300 font-bold text-[10px] uppercase py-2 px-2 rounded-lg transition-colors cursor-pointer"
+                >
+                  {role.label}
+                </button>
+              ))}
             </div>
-            {[
-              { id: 'colaborador', label: 'Pedro (Almox.)', username: 'pedro' },
-              { id: 'lider', label: 'Rafael (Coord.)', username: 'rafael' },
-              { id: 'rh', label: 'Márcia (RH)', username: 'marcia' },
-              { id: 'ti', label: 'João (TI)', username: 'joao' },
-              { id: 'inovacao', label: 'Inovação', username: 'inovacao' },
-              { id: 'sadt', label: 'Daniela (SADT)', username: 'daniela' },
-              { id: 'atendimento', label: 'Andréa (Atend.)', username: 'andrea' },
-              { id: 'financeiro', label: 'Johnny (Financ.)', username: 'johnny' },
-              { id: 'faturamento', label: 'Luis (Fatur.)', username: 'luis' },
-              { id: 'custos', label: 'Victor (Custos)', username: 'victor' },
-              { id: 'comercial', label: 'Ingrid (Comerc.)', username: 'ingrid' },
-              { id: 'marketing', label: 'Bruno (Mkt)', username: 'bruno' },
-              { id: 'seguranca', label: 'Samuel (Seg. Trab.)', username: 'samuel' },
-              { id: 'sesmt', label: 'Dr. Lucas (Med. Trab.)', username: 'lucas' },
-              { id: 'juridico', label: 'Dr. Alexandre (Comp.)', username: 'alexandre' },
-              { id: 'diretor_administrativo', label: 'Jociliano (Dir. Adm.)', username: 'jociliano' },
-              { id: 'diretor_geral', label: 'Carlos (Geral)', username: 'carlos' },
-              { id: 'suprimentos', label: 'Luiza (Suprim.)', username: 'luiza' },
-              { id: 'apresentador', label: 'Pedro (Apresentador)', username: 'pedrodiogo' }
-            ].map((role, idx) => (
-              <button
-                key={`${role.id}-${idx}`}
-                type="button"
-                onClick={() => {
-                  setUsername(role.username);
-                  setPassword('senha123'); // senha padrão que a TI deve cadastrar
-                }}
-                className="flex-1 min-w-[70px] bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-300 font-bold text-[10px] uppercase py-2 px-2 rounded-lg transition-colors cursor-pointer"
-              >
-                {role.label}
-              </button>
-            ))}
-          </div>
+          )}
 
           {/* Username input */}
           <div className="space-y-2">

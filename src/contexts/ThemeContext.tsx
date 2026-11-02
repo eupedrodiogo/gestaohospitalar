@@ -11,12 +11,18 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
-    return (localStorage.getItem("hsf_theme_v3") as Theme) || "hsf";
+    const saved = localStorage.getItem("hsf_theme_v4") as Theme;
+    if (saved) return saved;
+    
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
   });
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", currentTheme);
-    localStorage.setItem("hsf_theme_v3", currentTheme);
+    localStorage.setItem("hsf_theme_v4", currentTheme);
   }, [currentTheme]);
 
   return (
